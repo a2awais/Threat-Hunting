@@ -1,0 +1,16 @@
+// Hunt for activities that may indicate disabling or tampering with Windows Event Logging
+let legituser = dynamic(["system"]);
+let expectedcommands = dynamic(["..."]);
+let suspiciousCommands = dynamic([
+    "wevtutil cl", "net stop eventlog", "sc stop eventlog", "auditpol /clear",
+    "auditpol /set /category",
+    "reg add HKLM\\SYSTEM\\CurrentControlSet\\Services\\EventLog"]);
+DeviceProcessEvents
+| where Timestamp > ago(7d)
+| where InitiatingProcessAccountName !in~ (legituser)
+| where ProcessCommandLine !in~ (expectedcommands)
+| where ProcessCommandLine has_any (suspiciousCommands)
+   or (InitiatingProcessFileName  has_any ("wevtutil.exe", "auditpol.exe", "net.exe", "sc.exe")
+       and ProcessCommandLine has_any ("stop", "clear", "cl", "eventlog", "/clear", "/set"))
+| project Timestamp, DeviceName, FileName, InitiatingProcessFileName, ProcessCommandLine, InitiatingProcessCommandLine, InitiatingProcessParentFileName, InitiatingProcessAccountName
+| sort by Timestamp desc
