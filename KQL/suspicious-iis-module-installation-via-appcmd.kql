@@ -1,0 +1,6 @@
+DeviceProcessEvents
+| where FileName == "appcmd.exe"
+| where ProcessCommandLine has_all ("install", "module")
+| where ProcessCommandLine contains "-name:"
+| where InitiatingProcessFileName != "iissetup.exe"
+| project Timestamp, DeviceName, InitiatingProcessAccountName, FileName, ProcessCommandLine, InitiatingProcessFileName
