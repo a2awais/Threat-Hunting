@@ -1,0 +1,78 @@
+DeviceEvents
+| where Timestamp > ago(30d)  // Adjust time range based on hunting needs
+| where ActionType == "ProcessPrimaryTokenModified"  // Core event for token manipulation
+// Parse nested JSON fields from AdditionalFields
+| extend AF = parse_json(AdditionalFields)
+| extend TMP = parse_json(tostring(AF.TokenModificationProperties))
+// Extract critical token properties for analysis
+| extend OriginalSid = tostring(AF.OriginalTokenUserSid),        // Original user SID
+         CurrentSid = tostring(AF.CurrentTokenUserSid),          // Current user SID after modification
+         OrigSrcB64 = tostring(AF.OriginalTokenSource),          // Original token source (base64)
+         CurrSrcB64 = tostring(AF.CurrentTokenSource),           // Current token source (base64)
+         OriginalIntegrity = tostring(TMP.originalTokenIntegrityLevelName),  // Original integrity level
+         CurrentIntegrity = tostring(TMP.currentTokenIntegrityLevelName),    // Current integrity level
+         ChangeDesc = tostring(TMP.tokenChangeDescription),      // Description of token changes
+         PrivFlags = tostring(TMP.privilegesFlags),              // Privilege flags modified
+         IsSystemToken = tobool(TMP.isChangedToSystemToken)      // Whether token changed to SYSTEM
+// Decode base64 token sources for human-readable analysis
+| extend OriginalSource = iff(isnotempty(OrigSrcB64), base64_decode_tostring(OrigSrcB64), ""),
+         CurrentSource = iff(isnotempty(CurrSrcB64), base64_decode_tostring(CurrSrcB64), "")
+// DETECTION LOGIC - Multiple indicators of token manipulation
+// 1. SID Mismatch: Different user SIDs indicate token theft
+| extend SidMismatch = iif(OriginalSid != CurrentSid, 1, 0)
+// 2. Source Mismatch: Different token sources can indicate manipulation
+| extend SuspiciousSources = dynamic(["Seclogon", "S4U", "Schannel", "MSV1_0", "Kerberos", "NTLM"])
+| extend SourceMismatch = iif(
+    OriginalSource != CurrentSource and 
+    (CurrentSource has_any (SuspiciousSources) or OriginalSource has_any (SuspiciousSources)), 
+    1, 0
+)
+// 3. Integrity Escalation: Unauthorized elevation of token integrity levels
+| extend IntegrityEscalation = iif(
+    OriginalIntegrity != CurrentIntegrity and
+    (
+        CurrentIntegrity =~ "System" or 
+        CurrentIntegrity =~ "High" and OriginalIntegrity =~ "Medium" or
+        CurrentIntegrity =~ "Medium" and OriginalIntegrity =~ "Low"
+    ), 1, 0
+)
+// 4. Privilege Addition: Dangerous privileges being added to token
+| extend SuspiciousPrivs = dynamic(["SeDebugPrivilege", "SeTcbPrivilege", "SeImpersonatePrivilege", 
+                                   "SeAssignPrimaryTokenPrivilege", "SeBackupPrivilege", "SeRestorePrivilege"])
+| extend PrivilegeAdded = iif(
+    ChangeDesc contains "added" and 
+    PrivFlags has_any (SuspiciousPrivs), 
+    1, 0
+)
+// 5. System Token Conversion: Token changed to SYSTEM level (highly suspicious)
+| extend SystemTokenTheft = iif(IsSystemToken == true, 1, 0)
+// NOISE REDUCTION - Exclude legitimate system processes
+| where not(InitiatingProcessFileName in~ (
+    "lsass.exe", "services.exe", "winlogon.exe", "csrss.exe", "wininit.exe", "svchost.exe", "explorer.exe"))
+// DETECTION THRESHOLD - Flag any suspicious token modification
+| where SidMismatch == 1 or SourceMismatch == 1 or 
+        IntegrityEscalation == 1 or PrivilegeAdded == 1 or
+        SystemTokenTheft == 1
+| project-rename InitiatingAccount = InitiatingProcessAccountName
+| project 
+    Timestamp, 
+    DeviceName, 
+    InitiatingProcessFileName, 
+    InitiatingAccount,
+    TargetProcess = FileName, 
+    TargetAccount = AccountName,
+    OriginalSid, 
+    CurrentSid,
+    OriginalSource, 
+    CurrentSource,
+    OriginalIntegrity, 
+    CurrentIntegrity,
+    ChangeDesc, 
+    PrivFlags,
+    SidMismatch, 
+    SourceMismatch, 
+    IntegrityEscalation, 
+    PrivilegeAdded, 
+    SystemTokenTheft,
+    ReportId
+| order by Timestamp desc
