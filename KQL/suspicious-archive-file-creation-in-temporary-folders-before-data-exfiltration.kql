@@ -1,0 +1,5 @@
+DeviceFileEvents
+| where FolderPath has_any ( @"C:\Users\Public\", @"C:\ProgramData\", @"C:\Windows\Temp", @"C:\PerfLogs")
+| where FileName endswith ".zip" or FileName endswith ".7z" or FileName endswith ".rar"
+| where InitiatingProcessFileName has_any ("powershell.exe", "cmd.exe", "7z.exe", "winrar.exe", "explorer.exe")
+|where FileSize > 50000000  // >50MB
