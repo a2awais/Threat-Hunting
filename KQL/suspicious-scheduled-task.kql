@@ -1,0 +1,27 @@
+DeviceEvents
+| where ActionType == "ScheduledTaskCreated" and isnotempty(AdditionalFields)
+| extend ParsedFields = parse_json(AdditionalFields)
+| extend 
+    TaskName = tostring(ParsedFields.TaskName),
+    CreatorAccount = tostring(ParsedFields.SubjectUserName),
+    TaskContent = tostring(ParsedFields.TaskContent)
+| where 
+    (TaskName has_any ("update", "maintask", "sync", "backup", "logon") 
+     or TaskName contains "\\Microsoft\\Windows\\EnterpriseMgmt")
+    and CreatorAccount !endswith "$"
+| extend Command = extract(@"Command"":""([^""]+)", 1, TaskContent)
+| where isnotempty(Command)
+| where Command has_any ("powershell", "cmd", "certutil", "bitsadmin", "mshta", "rundll32", "wscript", "cscript")
+| project 
+    Timestamp, 
+    DeviceName, 
+    TaskName, 
+    CreatorAccount, 
+    Command, 
+    CommandLine = extract(@"Arguments"":""([^""]+)", 1, TaskContent),
+    RiskIndicator = case(
+        Command contains "powershell" and TaskContent contains "-enc", "HIGH",
+        Command has_any ("certutil", "bitsadmin"), "MEDIUM",
+        "LOW"
+    )
+| order by RiskIndicator desc, Timestamp desc
