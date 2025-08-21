@@ -1,0 +1,55 @@
+DeviceProcessEvents
+| where Timestamp > ago(7d)  // Adjust timeframe as needed
+| where FileName =~ "powershell.exe" or InitiatingProcessFileName =~ "powershell.exe"
+| where ProcessCommandLine has_any(
+    // --- T1087: Account Discovery ---
+    // T1087.001 (Local Accounts)
+    "Get-LocalUser", "Get-LocalGroup", "net user", "net localgroup",
+    // T1087.002 (Domain Accounts)
+    "Get-ADUser", "Get-ADGroup", "Get-NetUser", "Get-NetGroup", "Get-ADGroupMember",
+    // --- T1069: Permission Groups Discovery ---
+    // T1069.001 (Local Groups)
+    "Get-LocalGroupMember", "Get-NetLocalGroup",
+    // T1069.002 (Domain Groups)
+    "Get-ADGroupMember", "Get-NetGroupMember", "net group 'Domain Admins'",
+    // --- T1615: Group Policy Discovery ---
+    "Get-ADRGPO", "Get-ADRGPLink", "Get-DomainGPO", "Get-GPO", "gpresult",
+    // --- T1482: Domain Trust Discovery ---
+    "Get-DomainTrust", "Get-ForestDomain", "nltest /domain_trusts",
+    // --- T1135: Network Share Discovery ---
+    "Invoke-ShareFinder", "net share", "Get-SMBShare",
+    // --- T1016: System Network Config Discovery ---
+    // T1016.001 (DNS/Network Settings)
+    "Get-ADRDNSZone", "Get-DNSZone", "Get-DnsClientServerAddress", "ipconfig /all",
+    // --- T1021.002: SMB/Admin Shares (Lateral Movement Prep) ---
+    "net use", "New-PSDrive -PSProvider FileSystem",
+    // --- T1213.002: Data from AD Repositories ---
+    "Get-ADObject", "Get-ObjectAcl", "Get-ADReplicationAccount"
+    // === NEW: T1201 (Password Policy Discovery) ===
+    "Get-ADDefaultDomainPasswordPolicy",  // PowerShell AD module
+    "net accounts /domain",               // Windows built-in
+    "Get-DomainPolicy -Policy Password",  // PowerView
+    "Get-NetPasswordPolicy",              // PowerView alternative
+    "dsquery * -attr minPwdLength pwdHistory lockoutThreshold" // Raw LDAP query
+    )
+    )
+// Exclude common admin/help commands to reduce noise
+| where not(ProcessCommandLine matches regex @"-WhatIf|Get-Help|\?|--help|Measure-Command")
+// Filter out expected administrative tools (optional)
+//| where InitiatingProcessFileName !in~ ("mmc.exe", "rsat.exe", "explorer.exe")
+// Enrich with MITRE mapping (for reporting)
+| extend MITRE_TTP = case(
+    ProcessCommandLine contains "Get-ADUser" or ProcessCommandLine contains "Get-ADGroup", "T1087.002 (Domain Account Discovery)",
+    ProcessCommandLine contains "Get-LocalUser" or ProcessCommandLine contains "net user", "T1087.001 (Local Account Discovery)",
+    ProcessCommandLine contains "Get-ADGroupMember" or ProcessCommandLine contains "net group", "T1069.002 (Domain Group Discovery)",
+    ProcessCommandLine contains "Get-ADRGPO" or ProcessCommandLine contains "Get-GPO", "T1615 (Group Policy Discovery)",
+    ProcessCommandLine contains "Get-DomainTrust" or ProcessCommandLine contains "nltest", "T1482 (Domain Trust Discovery)",
+    ProcessCommandLine contains "Invoke-ShareFinder" or ProcessCommandLine contains "net share", "T1135 (Network Share Discovery)",
+    ProcessCommandLine contains "Get-ADRDNSZone" or ProcessCommandLine contains "ipconfig", "T1016 (Network Config Discovery)",
+    ProcessCommandLine contains "net use" or ProcessCommandLine contains "New-PSDrive", "T1021.002 (SMB Lateral Movement)",
+    ProcessCommandLine contains "Get-ADObject" or ProcessCommandLine contains "Get-ObjectAcl", "T1213.002 (AD Data Collection)",
+    "Other Reconnaissance Activity"
+    )
+| project-rename PowerShellCommand=ProcessCommandLine, Host=DeviceName, User=AccountName
+| project Timestamp, Host, User, PowerShellCommand, MITRE_TTP, InitiatingProcessFileName
+| order by Timestamp desc
