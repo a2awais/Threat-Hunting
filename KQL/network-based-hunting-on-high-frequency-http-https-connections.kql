@@ -1,0 +1,9 @@
+DeviceNetworkEvents
+| where ActionType == "ConnectionSuccess"
+| where RemoteIPType == "Public"
+| where RemotePort in (80, 443)
+| where InitiatingProcessFileName in~ ("powershell.exe", "cmd.exe", "certutil.exe", "bitsadmin.exe", "curl.exe", "wget.exe")
+| summarize ConnectionCount = count() by DeviceName, RemoteIP, RemoteUrl
+| where ConnectionCount > 50
+| project DeviceName, RemoteIP, RemoteUrl, ConnectionCount
+| order by ConnectionCount desc
