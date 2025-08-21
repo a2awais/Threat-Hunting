@@ -1,0 +1,27 @@
+// Driver inventory monitoring with available Defender fields
+DeviceImageLoadEvents
+| where Timestamp > ago(30d)
+// Join with DeviceFileEvents to get signing info
+| join kind=inner (
+    DeviceFileEvents
+    | where ActionType == "FileCreated"
+    | where FileName endswith ".sys"
+    | project FileName, FolderPath, InitiatingProcessVersionInfoCompanyName, SHA256, DeviceId
+) on $left.FileName == $right.FileName, $left.DeviceId == $right.DeviceId
+// Detection logic
+| where isempty(InitiatingProcessVersionInfoCompanyName) or InitiatingProcessVersionInfoCompanyName !has "Microsoft"  // Unsigned/non-Microsoft
+| where FolderPath1 startswith @"C:\Windows\Temp\" 
+    or FolderPath1 contains @"AppData\"
+    or FolderPath1 contains @"Temp\" 
+// Suspicious name patterns
+| where FileName matches regex @"[a-f0-9]{32}\.sys$"  // Random names
+    or FileName in~ ("gdrv.sys", "winio.sys", "procmon.sys")  // Known bad
+    or FileName matches regex @"^(ntos|ntio|win32k|dxgkrnl)"  // Mimicking system
+// Anomalous loading processes
+| where InitiatingProcessFileName !in~ ("services.exe", "svchost.exe", "System")
+| project Timestamp, DeviceName, DriverName = FileName,
+    DriverPath = strcat(FolderPath1, FileName),
+    LoaderProcess = InitiatingProcessFileName,
+    InitiatingProcessVersionInfoCompanyName,
+    IsTempLoad = iff(FolderPath1 contains @"Temp\", true, false),
+    SHA256
