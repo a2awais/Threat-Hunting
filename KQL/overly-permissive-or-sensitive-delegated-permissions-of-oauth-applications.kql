@@ -1,0 +1,37 @@
+OAuthAppInfo
+| where AppStatus == "Enabled"
+| summarize arg_max(Timestamp, *) by OAuthAppId // Get latest state of each app based on its unique ID
+| mv-expand Permissions to typeof(dynamic) // 'Permissions' is now the dynamic object for each permission entry
+| extend
+    PermissionValue = tostring(Permissions.PermissionValue), // Directly access properties from 'Permissions'
+    Resource = tostring(Permissions.TargetAppDisplayName)   // Directly access properties from 'Permissions'
+| summarize
+    AllPermissions = make_set(strcat(Resource, ":", PermissionValue)),
+    RiskyPermissions = make_set_if(PermissionValue,
+        Resource == "Microsoft Graph" and
+        PermissionValue has_any(
+            'MyFiles.Write',
+            'Files.ReadWrite.All',
+            'Sites.ReadWrite.All',
+            'AllSites.Write',
+            'Mail.Send',
+            'MailboxSettings.ReadWrite',
+            'User.ReadWrite.All'
+        )
+    ),
+    LastModified = max(Timestamp),
+    AppOrigin = take_any(AppOrigin),
+    // Ensure VerifiedPublisher is handled as a string for consistency
+    VerifiedPublisher = take_any(tostring(VerifiedPublisher))
+    by AppName, OAuthAppId // This 'by' clause ensures unique AppName/OAuthAppId combinations in the final output
+| extend HasRiskyPermissions = iff(array_length(RiskyPermissions) > 0, true, false)
+| project
+    AppName,
+    OAuthAppId,
+    VerifiedPublisher,
+    AppOrigin,
+    LastModified,
+    HasRiskyPermissions,
+    RiskyPermissions,
+    AllPermissions
+| order by HasRiskyPermissions desc, LastModified desc
