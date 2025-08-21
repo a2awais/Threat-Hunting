@@ -1,0 +1,116 @@
+let timeframe = 7d;
+let suspiciousBitsCommands = dynamic([
+    "SetNotifyFlags", 
+    "SetNotifyCmdLine", 
+    "SetMinRetryDelay", 
+    "SetCustomHeaders",
+    "addfile",
+    "addfileset",
+    "addfilewithranges",
+    "Start-BitsTransfer",
+    "Set-BitsTransfer",
+    "Create",
+    "upload",
+    "Resume",
+    "download"
+]);
+let suspiciousParents = dynamic([
+    "powershell.exe", 
+    "wscript.exe", 
+    "cscript.exe", 
+    "mshta.exe", 
+    "rundll32.exe", 
+    "msiexec.exe",
+    "winword.exe", 
+    "excel.exe", 
+    "outlook.exe",
+    "regsvr32.exe"
+]);
+DeviceProcessEvents
+| where Timestamp > ago(timeframe)
+// | Pay Attenstion - Excluding legit process to Lenovo udclientservice.exe and Windows sdiagnhost.exe to reduce noise 
+| where InitiatingProcessFileName != @"sdiagnhost.exe"
+| where InitiatingProcessFileName != @"udclientservice.exe"
+| where FileName =~ "bitsadmin.exe" or 
+      (FileName =~ "powershell.exe" and ProcessCommandLine has_any ("Start-BitsTransfer", "Set-BitsTransfer")) or
+      (FileName =~ "wmic.exe" and ProcessCommandLine has "bits")
+| extend CommandLine = coalesce(ProcessCommandLine, "")
+// Process chain analysis
+| extend ProcessChain = strcat(
+    "Parent: ", InitiatingProcessParentFileName, 
+    " → Launcher: ", InitiatingProcessFileName,
+    " → Target: ", FileName
+)
+| extend InitiatingCommandLine = coalesce(InitiatingProcessCommandLine, "")
+// Suspicious parent process detection
+| extend SuspiciousParent = case(
+    InitiatingProcessFileName in~ (suspiciousParents), "Known Risky Parent",
+    InitiatingProcessFileName =~ "powershell.exe" and InitiatingCommandLine matches regex @"-nop\b|-exec\b|-enc\b", "Suspicious PowerShell",
+    InitiatingProcessFileName endswith ".doc" or InitiatingProcessFileName endswith ".xls", "Office Document",
+    InitiatingProcessFileName =~ "explorer.exe" and InitiatingProcessParentFileName !in~ ("svchost.exe", "userinit.exe"), "Unexpected Explorer Parent",
+    ""
+)
+// Suspicious process chain patterns
+| extend SuspiciousChain = case(
+    ProcessChain has @"→ powershell.exe → bitsadmin.exe", "PowerShell to BITS",
+    ProcessChain has @"→ wscript.exe → bitsadmin.exe", "Script to BITS",
+    ProcessChain has @"→ mshta.exe → bitsadmin.exe", "HTA to BITS",
+    ProcessChain has @"→ winword.exe → bitsadmin.exe", "Office to BITS",
+    ProcessChain matches regex @"→ (cmd\.exe|powershell\.exe) → (powershell\.exe|wscript\.exe) → bitsadmin\.exe", "Multi-stage Execution Chain",
+    ""
+)
+// Detect suspicious BITS admin commands
+| extend SuspiciousCommand = case(
+    CommandLine has_any (suspiciousBitsCommands), "Suspicious BITS Command",
+    CommandLine matches regex @"bitsadmin\b.*\b(transfer|create|addfile|resume)", "BITS Transfer Command",
+    CommandLine matches regex @"bitsadmin\b.*\b(SetNotifyCmdLine|SetNotifyFlags)", "BITS Notification Manipulation",
+    CommandLine matches regex @"bitsadmin\b.*\.(exe|dll|ps1|vbs|js|bat|cmd)", "BITS Downloading Executable",
+    CommandLine matches regex @"Start-BitsTransfer\b.*-Priority\s+(Foreground|High)", "Non-default Priority Setting",
+    ""
+)
+// Persistence detection
+| extend PersistenceIndicator = case(
+    CommandLine matches regex @"bitsadmin\b.*\bSetNotifyCmdLine.*\b(Startup|Task)", "Startup/Task Persistence",
+    CommandLine matches regex @"bitsadmin\b.*\bSetNotifyCmdLine.*\b(regedit|schtasks)", "Registry/Task Scheduler Persistence",
+    CommandLine matches regex @"bitsadmin\b.*\bSetNotifyCmdLine.*\b(mshta|wscript|cscript)", "Script Engine Persistence",
+    CommandLine matches regex @"bitsadmin\b.*\bSetNotifyCmdLine.*\b(rundll32|regsvr32)", "DLL Hijacking Potential",
+    ""
+)
+// File copy detection
+| extend FileCopyIndicator = case(
+    CommandLine matches regex @"bitsadmin\b.*\b(addfile|addfileset).*\b\.(exe|dll|ps1|vbs|js)", "Executable File Transfer",
+    CommandLine matches regex @"bitsadmin\b.*\b(addfile|addfileset).*\\Temp\\", "Temp Directory Transfer",
+    CommandLine matches regex @"bitsadmin\b.*\b(addfile|addfileset).*\b(http|https|ftp):", "Remote File Transfer",
+    CommandLine matches regex @"Start-BitsTransfer\b.*-Source\s+(http|https|ftp)", "Remote Source Transfer",
+    ""
+)
+// Code execution detection
+| extend CodeExecutionIndicator = case(
+    CommandLine matches regex @"bitsadmin\b.*\bSetNotifyCmdLine.*\b(powershell|cmd|wscript)", "Command Execution Hook",
+    CommandLine matches regex @"bitsadmin\b.*\bSetNotifyCmdLine.*\b(\.exe|\.dll)", "Direct Executable Hook",
+    CommandLine matches regex @"Start-BitsTransfer\b.*\b-Destination.*\b\.(exe|dll|ps1)", "Executable Download",
+    ""
+)
+// Filter for only suspicious events
+| where isnotempty(SuspiciousCommand) 
+    or isnotempty(SuspiciousParent) 
+    or isnotempty(SuspiciousChain) 
+    or isnotempty(PersistenceIndicator) 
+    or isnotempty(FileCopyIndicator) 
+    or isnotempty(CodeExecutionIndicator)
+// Final projection
+| project-reorder 
+    Timestamp, 
+    DeviceName, 
+    AccountName,
+    ProcessChain,
+    FileName, 
+    CommandLine,
+    InitiatingCommandLine,
+    SuspiciousCommand,
+    SuspiciousParent,
+    SuspiciousChain,
+    PersistenceIndicator,
+    FileCopyIndicator,
+    CodeExecutionIndicator
+| sort by Timestamp desc
