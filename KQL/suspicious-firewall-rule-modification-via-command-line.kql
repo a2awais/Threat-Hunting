@@ -1,0 +1,7 @@
+DeviceProcessEvents
+| where FileName in~ ("netsh.exe", "powershell.exe")
+| where ProcessCommandLine has_any ("New-NetFirewallRule", "Set-NetFirewallRule", "Remove-NetFirewallRule",
+"Set-NetFirewallProfile", "Set-NetFirewallProfile", "Disable-NetFirewallRule", "Enable-NetFirewallRule", "Delete rule name=")
+// Excluding the Noice - pay attention if its required for your hypothesis
+| where ProcessIntegrityLevel != @"System"
+| project DeviceName, AccountName, FileName, InitiatingProcessFileName, InitiatingProcessParentFileName, ProcessCommandLine, InitiatingProcessCommandLine
