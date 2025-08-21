@@ -1,0 +1,30 @@
+let timeframe = 30d;
+let SuspiciousCmdlets = dynamic([
+    "Get-Mailbox", "Get-Recipient", "Get-User", "Get-DistributionGroupMember", 
+    "Export-Csv", "Out-File", "ConvertTo-Csv"
+]);
+let SuspiciousParams = dynamic([
+    "-ResultSize", "-ExpandProperty", "-NoTypeInformation", "-hidetableheaders"
+]);
+//let ExcludedAccounts = dynamic(["admin@yourcorp.com", "svc_backup", "itopsuser1"]);  // suppress known-good
+DeviceProcessEvents
+| where Timestamp > ago(timeframe)
+| where FileName =~ "powershell.exe"
+//| where AccountName !in~ (ExcludedAccounts)
+| where ProcessCommandLine has_any (SuspiciousCmdlets)
+    and ProcessCommandLine has_any (SuspiciousParams)
+| extend StealthUsed = iff(ProcessCommandLine matches regex @"(?i)(-enc|-noni|-nop|-w\s+hidden)", "YES", "NO")
+| extend SuspiciousParent = iff(
+    InitiatingProcessFileName has_any("outlook.exe", "iexplore.exe", "chrome.exe", "winword.exe"), "YES", "NO"
+)
+| join kind=leftouter (
+    DeviceFileEvents
+    | where Timestamp > ago(timeframe)
+    | where FileName matches regex @"(?i)\.(csv|xml|zip|txt)$"
+    | summarize FirstFileWrite=min(Timestamp), FileCount=count() by DeviceId, InitiatingProcessId, FolderPath
+) on DeviceId, InitiatingProcessId
+| summarize EventCount=count() by 
+    DeviceName, AccountName, FileName, ProcessCommandLine, 
+    FolderPath, FirstFileWrite, FileCount, StealthUsed, SuspiciousParent
+| where EventCount > 1 or isnotempty(FileCount)
+| order by FirstFileWrite desc
