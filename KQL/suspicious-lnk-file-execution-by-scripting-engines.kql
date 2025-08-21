@@ -1,0 +1,39 @@
+DeviceEvents
+| where Timestamp > ago(7d)  // Adjust based on hunting needs
+| where FileName endswith ".lnk"
+// Broad process filter (common script interpreters)
+| where InitiatingProcessFileName in~ (
+    "powershell.exe", "pwsh.exe", "cmd.exe",
+    "wscript.exe", "cscript.exe", "mshta.exe",
+    "rundll32.exe", "regsvr32.exe"
+)
+// Parse key LNK attributes (ignore strict filtering)
+| extend ParsedFields = parse_json(AdditionalFields)
+| extend
+    Container = tostring(ParsedFields.Container),
+    CommandLine = tostring(ParsedFields.ShellLinkShowCommand),
+    WorkingDirectory = tostring(ParsedFields.ShellLinkWorkingDirectory),
+    IsAdmin = tostring(ParsedFields.ShellLinkRunAsAdmin)
+// Flag suspicious traits (not filtering yet!)
+| extend
+    HasEmbeddedCMD = Container has_any ("CmdEscapeChar", "CMDEmbedded", "PSEmbedded"), //High fedality flags
+    HasPowerShell = CommandLine has_any ("powershell", " -e ", " -enc ", " -nop ", "mshta"),
+    HasSuspTarget = WorkingDirectory has_any ("\\Temp\\", "\\AppData\\", "cmd.exe", "powershell.exe", "mshta.exe")
+// filtering the noice
+| where CommandLine != @"SW_SHOWNORMAL"
+// Project all raw data + risk flags (for analyst triage)
+| project
+    Timestamp,
+    DeviceName,
+    FileName,
+    FolderPath,
+    InitiatingProcessFileName,
+    InitiatingProcessAccountName,
+    WorkingDirectory,
+    CommandLine,
+    Container,
+    IsAdmin,
+    HasEmbeddedCMD,
+    HasPowerShell,
+    HasSuspTarget
+| sort by Timestamp desc
