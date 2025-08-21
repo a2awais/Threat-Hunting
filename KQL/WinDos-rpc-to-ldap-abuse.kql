@@ -1,0 +1,72 @@
+// Hunt Window: adjust based on need
+let lookback = 7d;
+let ldap_ports = dynamic([389, 636, 3268, 3269]);  // LDAP / LDAPS / GC ports
+let rpc_ports  = dynamic([135, 445]);              // RPC & SMB
+let outbound_ldap_dns =
+DeviceNetworkEvents
+| where Timestamp > ago(lookback)
+| where ActionType == "DnsConnectionInspected"
+| extend direction = tostring(parse_json(AdditionalFields)["direction"]),
+         queryName = tostring(parse_json(AdditionalFields)["query"]),
+         DeviceHost = iff(isnotempty(DeviceName), DeviceName, strcat("Unknown-", DeviceId))
+| where direction == "Out"
+| where queryName has "_ldap"
+| where not(ipv4_is_private(RemoteIP))
+| where DeviceHost matches regex @"(?i)^DCS-\d+"   // Adjust DC naming convention
+| summarize DNS_Query_Count = count(),
+            Queried_Domains = make_set(queryName, 10)
+          by DeviceHost;
+// Stage 2: Inbound LDAP/RPC Bursts to DCs (possible exploitation attempts)
+let inbound_exploitation =
+DeviceNetworkEvents
+| where Timestamp > ago(lookback)
+| extend DeviceHost = iff(isnotempty(DeviceName), DeviceName, strcat("Unknown-", DeviceId))
+| where DeviceHost matches regex @"(?i)^DCS-\d+"   // Adjust DC naming convention
+| where RemotePort in (ldap_ports) or RemotePort in (rpc_ports)
+| summarize Inbound_Count = count(),
+            Unique_Sources = dcount(RemoteIP),
+            FirstSeen = min(Timestamp),
+            LastSeen = max(Timestamp)
+          by DeviceHost, RemotePort, InitiatingProcessFileName
+| where Inbound_Count > 10; // Threshold: adjust to baseline
+// Stage 3: Outbound LDAP Spikes from DC System Processes (possible bot behavior)
+let outbound_spikes =
+DeviceNetworkEvents
+| where Timestamp > ago(lookback)
+| extend DeviceHost = iff(isnotempty(DeviceName), DeviceName, strcat("Unknown-", DeviceId))
+| where DeviceHost matches regex @"(?i)^DCS-\d+"   // Adjust DC naming convention
+| where RemotePort in (ldap_ports)
+| where InitiatingProcessFileName in~ ("lsass.exe", "svchost.exe")
+| summarize Outbound_Count = count(),
+            Outbound_Targets = make_set(RemoteIP, 10)
+          by DeviceHost
+| where Outbound_Count > 10; // Adjust threshold to environment
+// Stage 4: Service control operations targeting lsass/svchost with RPC commands (SafeBreach-aligned)
+let service_control_ops =
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where InitiatingProcessFileName in~ ("lsass.exe", "svchost.exe")
+| where ProcessCommandLine has_any ("rpcss", "rpc")
+| where ProcessCommandLine has_any ("stop", "shutdown", "restart")  // Service control ops
+| where not(InitiatingProcessFileName has_any ("services.exe"))     // Reduce SCM noise
+| project Timestamp, DeviceName, InitiatingProcessFileName, ProcessCommandLine, ReportId;
+// Final Correlation: All Stages
+outbound_ldap_dns
+| join kind=fullouter inbound_exploitation on DeviceHost
+| join kind=fullouter outbound_spikes on DeviceHost
+| join kind=leftouter service_control_ops on $left.DeviceHost == $right.DeviceName
+| project DeviceHost,
+          DNS_Query_Count,
+          Queried_Domains,
+          Inbound_Count,
+          Unique_Sources,
+          RemotePort,
+          InitiatingProcessFileName,
+          Outbound_Count,
+          Outbound_Targets,
+          Timestamp,
+          ProcessCommandLine,
+          ReportId,
+          FirstSeen,
+          LastSeen
+| order by coalesce(Outbound_Count, Inbound_Count, DNS_Query_Count) desc
