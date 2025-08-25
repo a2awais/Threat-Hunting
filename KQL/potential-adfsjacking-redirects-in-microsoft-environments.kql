@@ -1,0 +1,33 @@
+let SuspiciousDomains = dynamic(["bluegraintours.com", "offirmtm.com", "Add more IOCs here if available" ]);
+let KnownMicrosoftDomains = dynamic([
+  "microsoftonline.com", "office.com", "microsoft.com", "outlook.office.com", "Add more legit domains here if needed"
+]);
+DeviceNetworkEvents
+| where Timestamp > ago(1d)
+//     Focus only on ADFS/Microsoft login-related requests 
+| where RemoteUrl has "login.microsoftonline.com" or RemoteUrl has "/adfs/ls/"
+| where RemoteUrl has "redirect_uri=" or RemoteUrl has "wreply="
+| extend UrlLower = tolower(RemoteUrl)
+| extend UrlDecoded = url_decode(UrlLower)
+| extend RedirectDomain = extract(@"(wreply|redirect_uri)=(?:https?://)?([^/&?]+)", 2, UrlDecoded)
+// --- Flag domains as legit, suspicious, or unknown
+| extend IsLegitRedirect   = RedirectDomain has_any (KnownMicrosoftDomains)
+| extend IsSuspiciousIOC   = RedirectDomain has_any (SuspiciousDomains)
+| extend RedirectSuspicious = iff(
+      isnotempty(RedirectDomain) 
+      and (not(IsLegitRedirect) or IsSuspiciousIOC),
+      true, false
+  )
+// --- suspicious hits
+| where RedirectSuspicious == true
+| project 
+    Timestamp, 
+    DeviceName, 
+    InitiatingProcessAccountName,
+    RemoteUrl, 
+    UrlDecoded,
+    RemoteIP, 
+    RedirectDomain, 
+    InitiatingProcessFileName, 
+    InitiatingProcessCommandLine
+| extend Detection = "Suspicious ADFS redirect (possible ADFSjacking)"
