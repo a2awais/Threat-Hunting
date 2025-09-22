@@ -1,0 +1,37 @@
+// MITRE ATT&CK T1653 - Power Settings Manipulation
+// Detects adversaries attempting to disable or alter system power settings via powercfg, registry tampering, or deletion of hiberfil.sys.
+let lookback = 30d;
+// 1) Powercfg commands disabling hibernate or altering power policies
+let powercfg_hits = DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName == "powercfg.exe"
+| where InitiatingProcessFileName != "tsmanager.exe"
+| where ProcessCommandLine has_any ("/hibernate off","-hibernate off","/h off","-h off","/hibernate:off", "-setacvalueindex","-setdcvalueindex","-change"," /change"," -change")
+| project Timestamp, DeviceName, InitiatingProcessFileName, FileName, ProcessCommandLine, ReportId, InitiatingProcessAccountName, AccountName, FolderPath;
+//  2) Registry tampering: disabling hibernation (HibernateEnabled = 0)
+let reg_hibernate_off = DeviceRegistryEvents
+| where Timestamp > ago(lookback)
+| where RegistryKey has @"\system\currentcontrolset\control\power"
+| where tolower(RegistryValueName) has "hibernate"
+| where RegistryValueData in ("0","0x0","0x00000000")
+| project Timestamp, DeviceName, ActionType, RegistryKey, RegistryValueName, RegistryValueData, InitiatingProcessFileName, InitiatingProcessAccountName, ReportId;
+//  3) Deletion/modification of hiberfil.sys
+let hiberfile_deletes = DeviceFileEvents
+| where Timestamp > ago(lookback)
+| where ActionType in ("FileDeleted","FileModified","FileRemoved")
+| where FileName =~ "hiberfil.sys" or FolderPath has @"hiberfil.sys"
+| project Timestamp, DeviceName, FileName, FolderPath, ActionType, InitiatingProcessFileName, InitiatingProcessAccountName, ReportId;
+//  4) Suspicious PowerShell/cmd usage related to power settings
+let suspicious_ps = DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName in~ ("powershell.exe","pwsh.exe","cmd.exe")
+| where ProcessCommandLine matches regex @"(?i)(powercfg\s+(-h|/h|/hibernate)|hiberfil\.sys|HibernateEnabled|CurrentControlSet\\Control\\Power|Set-ItemProperty\s+.*HibernateEnabled)"
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessAccountName, ReportId;
+// --- Union results
+powercfg_hits
+| extend Signal="powercfg_command"
+| union (reg_hibernate_off | extend Signal="registry_hibernate_disabled")
+| union (hiberfile_deletes | extend Signal="hiberfile_deleted")
+| union (suspicious_ps | extend Signal="suspicious_powershell_cmd")
+| sort by Timestamp desc
+| project Timestamp, DeviceName, Signal, InitiatingProcessFileName, FileName, ProcessCommandLine, RegistryKey, RegistryValueName, RegistryValueData, FolderPath, InitiatingProcessAccountName, AccountName, ReportId
