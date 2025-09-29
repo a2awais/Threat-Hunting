@@ -1,0 +1,16 @@
+// Define suspicious command-line flags that indicate EDR silencing activity
+let suspect_flags_regex = @"(?i)\b(blockedr|block|unblockall|unblock)\b";
+// List of common interpreter/script host processes that attackers use to launch tools
+let interpreters = dynamic(["cmd.exe","powershell.exe","pwsh.exe","wscript.exe","cscript.exe","rundll32.exe","mshta.exe","explorer.exe","regsvr32.exe"]);
+// Exclude command lines containing these to filter out legitimate document processing
+let ReadersDocs = dynamic([".pdf", ".xlsx", ".doc", "docx", "xls", "ods", ".msg", ".png", "jpg", ".odt", ".txt", ".xlsb"]);
+DeviceProcessEvents
+| where Timestamp > ago(30d)
+| where not (ProcessCommandLine has_any (ReadersDocs))
+| where 
+    tolower(FileName) == "edrsilencer.exe" or  // Direct EDR Silencer executable
+    tolower(InitiatingProcessFileName) in (interpreters)  // Launched by common interpreters
+| extend cmdline = tostring(ProcessCommandLine)
+| where cmdline matches regex suspect_flags_regex
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessAccountName, ReportId, ProcessId
+| sort by Timestamp desc
