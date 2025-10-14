@@ -1,0 +1,22 @@
+let lookback = 1d;
+let azure_hosts = dynamic([".azurewebsites.net", ".blob.core.windows.net", ".cloudapp.net", ".azureedge.net", ".function.azure.com", ".trafficmanager.net"]);
+let downloads = DeviceFileEvents
+    | where Timestamp >= ago(lookback)
+    | where FolderPath has_any ("\\Downloads\\", "\\AppData\\Local\\Temp\\", "\\Temp\\", "\\AppData\\Roaming\\")
+    | where FileName endswith ".exe"
+    | project DeviceName, ExeFile=FileName, ExeFolder=FolderPath, ExeSHA1=SHA1, TimestampExe=Timestamp;
+let dllloads = DeviceImageLoadEvents
+    | where Timestamp >= ago(lookback)
+    | where FileName endswith ".dll"
+    | project DeviceName, DllFile=FileName, DllFolder=FolderPath, DllSHA1=SHA1, TimestampDll=Timestamp, InitiatingProcessFileName, InitiatingProcessCommandLine;
+let net = DeviceNetworkEvents
+    | where Timestamp >= ago(lookback)
+    | extend rhost = RemoteUrl
+    | where rhost has_any (azure_hosts)
+    | project DeviceName, InitiatingProcessFileName, RemoteUrl= rhost, RemoteIP, TimestampNet=Timestamp, InitiatingProcessCommandLine;
+downloads
+| join kind=inner dllloads on DeviceName
+| where DllFolder has ExeFolder or ExeFolder has DllFolder
+| join kind=inner net on DeviceName, InitiatingProcessFileName
+| project Timestamp = TimestampNet, DeviceName, ExeFile, ExeFolder, DllFile, DllFolder, InitiatingProcessFileName, InitiatingProcessCommandLine, RemoteUrl, RemoteIP
+| order by Timestamp desc
