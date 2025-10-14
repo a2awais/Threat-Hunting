@@ -1,0 +1,51 @@
+// High-fidelity: Office/browser -> EXE spawn from recruitment lures (Subtle Snail)
+// 7d lookback, 24h freshness for created files
+let lookback = 3d;
+let freshWindow = 12h;
+let UserExecutionPaths = dynamic(["\\Users\\","\\Downloads\\","\\AppData\\Local\\Temp\\","\\AppData\\Roaming\\"]);
+let OfficeParents = dynamic(["winword.exe","excel.exe","powerpnt.exe","outlook.exe"]);
+let BrowserParents = dynamic(["msedge.exe","chrome.exe","iexplore.exe","firefox.exe"]);   // include firefox if present
+let RecruitKeywords = dynamic(["linkedin","recruit","careers","job","jobs","vacancy","hiring","interview","resume","cv","offer","application","candidate", "task"]);
+// 1) Candidate child processes (exes in user paths)
+let child_procs = DeviceProcessEvents
+| where Timestamp >= ago(lookback)
+| where FileName endswith ".exe"
+| where FolderPath has_any (UserExecutionPaths)
+| project DeviceId, DeviceName, ChildProcessId = ProcessId, ChildFileName = FileName, ChildFolder = FolderPath, ChildSHA1 = SHA1, ChildCommandLine = ProcessCommandLine, ChildTime = Timestamp, ChildAccount = AccountName, InitiatingProcessFileName, InitiatingProcessCommandLine;
+// 2) Keep only those where the initiating process is Office OR a browser with recruiter keywords in its command line
+let interesting_children = child_procs
+| where InitiatingProcessFileName in (OfficeParents) 
+      or (InitiatingProcessFileName in (BrowserParents) and InitiatingProcessCommandLine has_any (RecruitKeywords))
+| project-away ChildProcessId; // keep columns for joining next step
+// 3) Actually re-query DeviceProcessEvents to pick child rows while retaining initiating fields
+let child_rows =
+    DeviceProcessEvents
+    | where Timestamp >= ago(lookback)
+    | where FileName endswith ".exe"
+    | where FolderPath has_any (UserExecutionPaths)
+    | where (InitiatingProcessFileName in (OfficeParents))
+          or (InitiatingProcessFileName in (BrowserParents) and InitiatingProcessCommandLine has_any (RecruitKeywords))
+    | project ChildTime = Timestamp, DeviceId, DeviceName, ChildFileName = FileName, ChildFolder = FolderPath, ChildSHA1 = SHA1,
+              ChildCommandLine = ProcessCommandLine, ChildProcessId = ProcessId,
+              InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessAccountName = InitiatingProcessAccountName, InitiatingProcessParentFileName;
+// 4) Get file creation time for those child exes (min timestamp per Device+SHA)
+let child_files = DeviceFileEvents
+| where Timestamp >= ago(lookback)
+| where FileName endswith ".exe"
+| project DeviceId, FileSHA1 = SHA1, FileCreatedTime = Timestamp
+| summarize FileCreatedTime = min(FileCreatedTime) by DeviceId, FileSHA1;
+// 5) Certificate info for child exe (optional enrichment)
+let child_certs = DeviceFileCertificateInfo
+| summarize arg_max(Timestamp, IsSigned, IsTrusted, Signer) by SHA1
+| project SHA1, IsSigned, IsTrusted, Signer;
+// 6) Correlate efficiently using lookup ($left/$right) and filter for recent download
+child_rows
+| lookup kind=leftouter child_files on $left.DeviceId == $right.DeviceId and $left.ChildSHA1 == $right.FileSHA1
+| lookup kind=leftouter child_certs on $left.ChildSHA1 == $right.SHA1
+| extend CreatedWithin24h = iif(isnull(FileCreatedTime), false, FileCreatedTime <= ChildTime and FileCreatedTime >= ChildTime - 24h)
+| where CreatedWithin24h   // require fresh download before execution
+// reduce noise: exclude known benign installers if needed (add to list)
+| where not(InitiatingProcessFileName in~ ("teams.exe"))   // optional
+| project FirstSeen = ChildTime, DeviceName, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessAccountName,
+          ChildFileName, ChildFolder, ChildSHA1, FileCreatedTime, IsSigned, IsTrusted, Signer, ChildCommandLine, InitiatingProcessParentFileName
+| order by FirstSeen desc
