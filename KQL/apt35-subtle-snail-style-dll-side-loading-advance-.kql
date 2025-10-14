@@ -1,0 +1,55 @@
+// DLL Side-Loading Detection (Subtle Snail / Lazarus-style)
+// Optimized for Defender XDR schema correctness and low memory usage
+let lookback = 24h;
+let recentWindowHours = 12h;
+let UserExecutionPaths = dynamic(["\\Users\\","\\Downloads\\","\\AppData\\Local\\Temp\\","\\AppData\\Roaming\\"]);
+let LegitDlls = dynamic(["83bcda15a31484b722d274e2fec86fba91c66b66", "052f62fb2ebec89fbe412db480865910eab693ad", "8aafeb643402e54a4395be33199980079b6e4894"]);
+// 1) Collect DLL load events from suspicious (user-space) locations
+let dll_loads = DeviceImageLoadEvents
+| where Timestamp >= ago(lookback)
+| where FileName endswith ".dll"
+| where FolderPath has_any (UserExecutionPaths)
+| where not(FolderPath startswith @"C:\Windows\") and not(FolderPath startswith @"C:\Program Files")
+| where not(SHA1 in (LegitDlls))
+| project DeviceId, DeviceName, LoadTime = Timestamp, DllFile = FileName, DllFolder = FolderPath,
+          DllSHA1 = SHA1, InitiatingProcessId, InitiatingProcessFileName,
+          InitiatingProcessFolderPath, InitiatingProcessCommandLine,
+          InitiatingProcessAccountName;
+// 2) Get file creation time for those DLLs (only matching DeviceId + SHA1)
+let dll_files = DeviceFileEvents
+| where Timestamp >= ago(lookback)
+| where FileName endswith ".dll"
+| project DeviceId, SHA1, FileCreatedTime = Timestamp
+| summarize FileCreatedTime = min(FileCreatedTime) by DeviceId, SHA1;
+// 3) Get certificate info for DLLs (IsSigned, IsTrusted, Signer)
+let dll_certs = DeviceFileCertificateInfo
+| summarize arg_max(Timestamp, IsSigned, IsTrusted, Signer) by SHA1
+| project DllFileSHA1 = SHA1, Dll_IsSigned = IsSigned, Dll_IsTrusted = IsTrusted, Dll_Signer = Signer;
+// 4) Get parent process info
+let parent_info = DeviceProcessEvents
+| where Timestamp >= ago(lookback)
+| project DeviceId, ProcessId, ParentFileSHA1 = SHA1, ParentFileName = FileName,
+          ParentFolderPath = FolderPath, InitiatingProcessIntegrityLevel, AccountName;
+// 5) Get parent signer metadata
+let parent_certs = DeviceFileCertificateInfo
+| summarize arg_max(Timestamp, IsSigned, IsTrusted, Signer) by SHA1
+| project ParentFileSHA1 = SHA1, Parent_IsSigned = IsSigned, Parent_IsTrusted = IsTrusted, Parent_Signer = Signer;
+// 6) Correlate all
+dll_loads
+| lookup kind=leftouter dll_files on $left.DeviceId == $right.DeviceId and $left.DllSHA1 == $right.SHA1
+| lookup kind=leftouter dll_certs on $left.DllSHA1 == $right.DllFileSHA1
+| lookup kind=leftouter parent_info on $left.DeviceId == $right.DeviceId and $left.InitiatingProcessId == $right.ProcessId
+| lookup kind=leftouter parent_certs on $left.ParentFileSHA1 == $right.ParentFileSHA1
+| extend DllCreatedWithinWindow = iif(isnull(FileCreatedTime), false,
+       FileCreatedTime <= LoadTime and FileCreatedTime >= LoadTime - recentWindowHours)
+| where (isnull(Dll_IsSigned) or Dll_IsSigned == false or Dll_IsTrusted == false)
+| where Parent_IsSigned == true and Parent_IsTrusted == true
+| where not(ParentFileName in~ ("svchost.exe","rundll32.exe","dllhost.exe","lsass.exe","services.exe","explorer.exe"))
+| where not(InitiatingProcessAccountName in~ ("NT AUTHORITY\\SYSTEM","LOCAL SERVICE","NETWORK SERVICE"))
+| where not(InitiatingProcessAccountName endswith "$")
+| where DllCreatedWithinWindow
+| project
+    FirstSeen = LoadTime, DeviceName, InitiatingProcessFileName, InitiatingProcessFolderPath, InitiatingProcessCommandLine, InitiatingProcessAccountName, ParentFileName,
+    ParentFolderPath, InitiatingProcessIntegrityLevel, DllFile, DllFolder, DllSHA1, FileCreatedTime, Dll_IsSigned, Dll_IsTrusted, Dll_Signer,
+    Parent_IsSigned, Parent_IsTrusted, Parent_Signer
+| order by FirstSeen desc
