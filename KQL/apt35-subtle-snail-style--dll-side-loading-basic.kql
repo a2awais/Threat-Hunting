@@ -1,0 +1,30 @@
+// Detect potential Subtle Snail style DLL side-loading with signature mismatch
+let lookback = 1d;
+let LegitDlls = dynamic(["83bcda15a31484b722d274e2fec86fba91c66b66", "052f62fb2ebec89fbe412db480865910eab693ad", "8aafeb643402e54a4395be33199980079b6e4894", "ffbe3a735c713a1d45ebd828b9999dfd3f6bf207"]);
+let dll_loads = DeviceImageLoadEvents
+| where Timestamp >= ago(lookback)
+| where FileName endswith ".dll"
+| where FolderPath has_any ("\\Users\\","\\Downloads\\","\\AppData\\Local\\Temp\\","\\AppData\\Roaming\\")   // user-space locations
+| where not(SHA1 in (LegitDlls))
+| project DeviceId, DeviceName, Timestamp, FileName, FolderPath, SHA1, InitiatingProcessFileName, InitiatingProcessId, InitiatingProcessFolderPath;
+// Get signer info for loaded DLLs
+let dll_signers = DeviceFileCertificateInfo
+| project DllSHA1 = SHA1, DllIsSigned = IsSigned, DllIsTrusted = IsTrusted, DllSigner = Signer, DllIssuer = Issuer;
+// Get signer info for parent EXE processes
+let parent_signers = DeviceFileCertificateInfo
+| project ParentSHA1 = SHA1, ParentIsSigned = IsSigned, ParentIsTrusted = IsTrusted, ParentSigner = Signer, ParentIssuer = Issuer;
+// Correlate DLL loads with signer metadata and process signer info
+dll_loads
+| join kind=leftouter dll_signers on $left.SHA1 == $right.DllSHA1
+| join kind=leftouter (
+    DeviceProcessEvents
+    | project DeviceId, InitiatingProcessId, ProcessSHA1 = SHA1, InitiatingProcessAccountName, ParentFileName = FileName
+) on DeviceId, InitiatingProcessId
+| join kind=leftouter parent_signers on $left.ProcessSHA1 == $right.ParentSHA1
+| where (DllIsSigned == false or DllIsTrusted == false or isnull(DllIsSigned)) // unsigned or untrusted DLL
+| where ParentIsSigned == true and ParentIsTrusted == true
+| where not(ParentFileName in~ ("svchost.exe","rundll32.exe","dllhost.exe","lsass.exe","services.exe","explorer.exe"))
+| where not(InitiatingProcessAccountName in~ ("SYSTEM","LOCAL SERVICE","NETWORK SERVICE"))
+| where not(InitiatingProcessAccountName endswith "$")
+| project Timestamp, DeviceName, InitiatingProcessFileName, ParentSigner, FileName, SHA1, FolderPath, DllSigner, DllIsSigned, DllIsTrusted
+| summarize Count = count() by DeviceName, InitiatingProcessFileName, ParentSigner, FileName, SHA1, FolderPath, DllSigner, DllIsSigned, DllIsTrusted
