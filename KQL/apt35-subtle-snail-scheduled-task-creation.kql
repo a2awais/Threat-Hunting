@@ -1,0 +1,31 @@
+let SubtleSnailHashes = dynamic([
+    // Add latest known Subtle Snail file hashes here
+    "41d60b7090607e0d4048a3317b45ec7af637d27e5c3e6e89ea8bdcad62c15bf9",
+    "4260328c81e13a65a081be30958d94b945fea6f2a483d051c52537798b100c69",
+    "5d832f1da0c7e07927dcf72d6a6f011bfc7737dc34f39c561d1457af83e04e70"
+]);
+let SuspiciousFiles = dynamic(["setup.exe", "userenv.dll", "xmllite.dll", "SenseSampleUploader.exe", "MigAutoPlay.exe", "MiniBike.dll", "MiniJunk.exe"]);
+let SuspiciousPaths = dynamic(["AppData\\Local\\Microsoft\\MigAutoPlay\\", "Downloads\\"]);
+let SuspiciousParents = dynamic(["explorer.exe", "chrome.exe", "msedge.exe", "firefox.exe", "iexplore.exe"]);
+let BenignExclusions = dynamic(["svchost.exe", "System"]);
+DeviceProcessEvents
+| where FileName == "schtasks.exe"
+| where ProcessCommandLine contains "/create"
+// Look for known suspicious files or paths in command line
+| where ProcessCommandLine has_any (SuspiciousFiles)
+    or ProcessCommandLine has_any (SuspiciousPaths)
+    or SHA256 in (SubtleSnailHashes)
+    or InitiatingProcessFileName in~ (SuspiciousParents)
+// Exclude known benign system processes and accounts
+| where InitiatingProcessFileName !in~ (BenignExclusions)
+| where InitiatingProcessAccountName !contains_cs "SYSTEM" and InitiatingProcessAccountName !contains_cs "LOCAL SERVICE" and InitiatingProcessAccountName !contains_cs "NETWORK SERVICE"
+| summarize EventCount = count(),
+            FirstSeen = min(Timestamp),
+            LastSeen = max(Timestamp),
+            InvolvedDevices = make_set(DeviceName),
+            Indicators = make_set_if(SHA256, isnotempty(SHA256)),
+            Commands = make_set(ProcessCommandLine),
+            Accounts = make_set(InitiatingProcessAccountName)
+            by FileName
+| where EventCount >= 2
+| order by FirstSeen desc
