@@ -1,0 +1,16 @@
+let SuspiciousNames = dynamic(["MiniBike", "SenseSampleUploader", "MigAutoPlay", "MiniJunk", "setup", "userenv", "xmllite"]);
+let SuspiciousFiles = dynamic(["MiniBike.dll", "MiniJunk.exe", "SenseSampleUploader.exe", "MigAutoPlay.exe", "setup.exe", "userenv.dll", "xmllite.dll"]);
+// Known user/machine Run/RunOnce keys
+let RunKeys = dynamic([
+    @"HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run",
+    @"HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+    @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run",
+    @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\RunOnce"
+]);
+DeviceRegistryEvents
+| where Timestamp >= ago(7d)
+| where RegistryKey in (RunKeys)
+| where ActionType in ("RegistryValueSet", "RegistryValueCreated")
+| where RegistryValueData has_any (SuspiciousFiles) or RegistryValueName has_any (SuspiciousNames)
+| project Timestamp, DeviceName, RegistryKey, RegistryValueName, RegistryValueData, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessAccountName
+| order by Timestamp desc
