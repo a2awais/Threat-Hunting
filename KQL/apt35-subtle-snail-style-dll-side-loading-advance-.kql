@@ -1,5 +1,4 @@
 // DLL Side-Loading Detection (Subtle Snail / Lazarus-style)
-// Optimized for Defender XDR schema correctness and low memory usage
 let lookback = 24h;
 let recentWindowHours = 12h;
 let UserExecutionPaths = dynamic(["\\Users\\","\\Downloads\\","\\AppData\\Local\\Temp\\","\\AppData\\Roaming\\"]);
@@ -52,4 +51,5 @@ dll_loads
     FirstSeen = LoadTime, DeviceName, InitiatingProcessFileName, InitiatingProcessFolderPath, InitiatingProcessCommandLine, InitiatingProcessAccountName, ParentFileName,
     ParentFolderPath, InitiatingProcessIntegrityLevel, DllFile, DllFolder, DllSHA1, FileCreatedTime, Dll_IsSigned, Dll_IsTrusted, Dll_Signer,
     Parent_IsSigned, Parent_IsTrusted, Parent_Signer
+
 | order by FirstSeen desc
