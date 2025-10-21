@@ -5,7 +5,7 @@ let suspiciousRegistry = DeviceRegistryEvents
 
 DeviceProcessEvents
 | where FileName in ("cmd.exe", "powershell.exe", "pwsh.exe", "mshta.exe")
-| where ProcessCommandLine has_any ("Invoke-WebRequest", "curl", "DownloadFile", "IEX",  "Net.WebClient", "DownloadString")
+| where ProcessCommandLine has_any ("Invoke-WebRequest", "curl", "DownloadFile", "IEX", "Net.WebClient", "DownloadString")
 | where InitiatingProcessFileName in~ ("explorer.exe", "iexplore.exe", "chrome.exe", "msedge.exe", "brave.exe", "opera.exe", "cmd.exe")
 | project DeviceName, ProcessCommandLine, ProcessTimestamp = Timestamp
 
