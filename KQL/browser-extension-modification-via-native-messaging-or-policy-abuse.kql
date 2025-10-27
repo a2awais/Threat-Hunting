@@ -36,4 +36,5 @@ writes
 // exclude obvious system/service actors (example list; replace with your environment allowlist)
 | where InitiatingProcessAccountName !in ("SYSTEM", "LOCAL SERVICE", "NETWORK SERVICE", "DOMAIN\\Your-svc-deploy") 
 | project WriteTime, RegTime, DeviceName, FolderPath, FileName, SHA1, MD5, RegistryKey, RegistryValueName, RegistryValueData, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessAccountName
+
 | sort by WriteTime desc
