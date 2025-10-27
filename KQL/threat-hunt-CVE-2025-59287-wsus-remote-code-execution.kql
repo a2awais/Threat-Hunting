@@ -1,0 +1,65 @@
+let Lookback = 1d;  // Extended for post-disclosure hunting
+let WSUSPorts = dynamic([8530, 8531]);
+let SuspiciousProcesses = dynamic(["cmd.exe", "powershell.exe", "pwsh.exe", "whoami.exe", "net.exe", "net1.exe"]);
+// 1. Network connections to WSUS ports from external sources
+let WSUSNetworkActivity = 
+DeviceNetworkEvents
+| where Timestamp > ago(Lookback)
+| where LocalPort in (WSUSPorts)
+| where RemoteIP !startswith "127." and RemoteIP !startswith "10." and RemoteIP !startswith "192.168." and RemoteIP !startswith "172."
+| project DeviceId, Timestamp, RemoteIP, LocalPort, RemotePort;
+// 2. WSUS log file modifications (forensic artifacts)
+let WSUSLogModifications =
+DeviceFileEvents
+| where Timestamp > ago(Lookback)
+| where ActionType == "FileModified" or ActionType == "FileCreated"
+| where FileName == "SoftwareDistribution.log" 
+| where FolderPath has @"\Program Files\Update Services\LogFiles\" 
+| project DeviceId, Timestamp, FileName, FolderPath;
+// 3. WSUS processes spawning suspicious children
+let SuspiciousProcessChains =
+DeviceProcessEvents
+| where Timestamp > ago(Lookback)
+| join kind=inner (
+    DeviceProcessEvents
+    | where Timestamp > ago(Lookback)
+    | where FileName in~ ("w3wp.exe", "wsusservice.exe")  // Parent WSUS/IIS processes
+    | project ChildDeviceId=DeviceId, ChildTimestamp=Timestamp, ParentFileName=FileName, ParentProcessId=ProcessId
+) on $left.InitiatingProcessId == $right.ParentProcessId
+| where FileName in~ (SuspiciousProcesses)  // Child processes of interest
+| where ProcessCommandLine has_any ("powershell -encodedCommand", "powershell -ec", "-EncodedCommand", "-ec", "whoami", "net user", "net group") 
+    or FileName in~ ("whoami.exe", "net.exe", "net1.exe")  // indicators - Modify in case of Noice
+| project DeviceId, Timestamp, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine, 
+          ParentFileName, FolderPath;
+// correlation
+let CompromisedDevices =
+WSUSNetworkActivity
+| summarize NetworkActivity = make_list(pack("Timestamp", Timestamp, "RemoteIP", RemoteIP, "LocalPort", LocalPort)) by DeviceId
+| join kind=inner (
+    WSUSLogModifications
+    | summarize LogActivity = make_list(pack("Timestamp", Timestamp, "FileName", FileName)) by DeviceId
+) on DeviceId
+| join kind=inner (
+    SuspiciousProcessChains
+    | summarize ProcessActivity = make_list(pack("Timestamp", Timestamp, "FileName", FileName, "ProcessCommandLine", ProcessCommandLine, "ParentFileName", ParentFileName)) by DeviceId
+) on DeviceId;
+// output with timeline
+SuspiciousProcessChains
+| join kind=inner (WSUSNetworkActivity) on DeviceId
+| join kind=inner (WSUSLogModifications) on DeviceId
+| join kind=inner (CompromisedDevices) on DeviceId
+| project 
+    Timestamp,
+    DeviceId, 
+    ParentFileName,
+    FileName, 
+    ProcessCommandLine,
+    InitiatingProcessFileName,
+    InitiatingProcessCommandLine,
+    FolderPath,
+    RemoteIP,
+    LocalPort,
+    LogFileModified = FileName1,  // From WSUSLogModifications
+    NetworkTimestamp = Timestamp1  // From WSUSNetworkActivity
+| order by Timestamp desc
+| extend Severity = "High"
