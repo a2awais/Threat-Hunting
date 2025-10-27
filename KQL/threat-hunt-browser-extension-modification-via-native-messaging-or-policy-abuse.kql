@@ -1,0 +1,39 @@
+let lookback = 1d;
+let writes = DeviceFileEvents
+| where Timestamp >= ago(lookback)
+| where FileName endswith_cs ".exe" or FileName endswith_cs ".dll" or FileName endswith_cs ".pyd"
+| where (
+      // Chrome per-profile extension folders
+      FolderPath has @"\Google\Chrome\User Data\" and FolderPath has @"\Extensions\"
+   or // Edge per-profile extension folders
+      FolderPath has @"\Microsoft\Edge\User Data\" and FolderPath has @"\Extensions\"
+   or // Firefox profile extensions
+      FolderPath has @"\Mozilla\Firefox\Profiles\" and FolderPath has @"\extensions\"
+   or // default Extensions
+      FolderPath has @"\Default\Extensions\"
+)
+| project WriteTime = Timestamp, DeviceId, DeviceName, FolderPath, FileName, SHA1, MD5, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessAccountName;
+let regs = DeviceRegistryEvents
+| where Timestamp >= ago(lookback)
+| where RegistryKey has_any (
+    @"HKEY_LOCAL_MACHINE\SOFTWARE\Google\Chrome\NativeMessagingHosts\",
+    @"HKEY_CURRENT_USER\SOFTWARE\Google\Chrome\NativeMessagingHosts\",
+    @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Edge\NativeMessagingHosts\",
+    @"HKEY_CURRENT_USER\SOFTWARE\Microsoft\Edge\NativeMessagingHosts\",
+    @"HKEY_LOCAL_MACHINE\SOFTWARE\Mozilla\NativeMessagingHosts\",
+    @"HKEY_CURRENT_USER\SOFTWARE\Mozilla\NativeMessagingHosts\",
+    @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist",
+    @"HKEY_CURRENT_USER\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist",
+    @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist",
+    @"HKEY_CURRENT_USER\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist"
+)
+| where ActionType in ("RegistryKeyCreated", "RegistryKeyDeleted", "RegistryKeyRenamed", "RegistryValueDeleted", "RegistryValueSet")
+| project RegTime = Timestamp, DeviceId, DeviceName, RegistryKey, RegistryValueName, RegistryValueData, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessAccountName;
+writes
+| join kind=inner (regs) on DeviceId
+// time correlation: registry change within +/- 1 hour of file write (tighten to 15m if you want even higher fidelity)
+| where RegTime >= WriteTime - 1h and RegTime <= WriteTime + 1h
+// exclude obvious system/service actors (example list; replace with your environment allowlist)
+| where InitiatingProcessAccountName !in ("SYSTEM", "LOCAL SERVICE", "NETWORK SERVICE", "DOMAIN\\Your-svc-deploy") 
+| project WriteTime, RegTime, DeviceName, FolderPath, FileName, SHA1, MD5, RegistryKey, RegistryValueName, RegistryValueData, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessAccountName
+| sort by WriteTime desc
