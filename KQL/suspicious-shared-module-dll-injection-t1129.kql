@@ -1,0 +1,49 @@
+// MITRE ATT&CK T1129 - Shared Modules 
+// Detects unsigned or untrusted DLLs loaded from non-standard paths into processes that recently executed
+let Lookback = 3d;
+let SuspiciousPaths = dynamic(["\\Users\\Public\\","\\Temp\\","\\AppData\\","\\ProgramData\\","\\Downloads\\","\\PerfLogs\\"]);
+let TargetProcesses = dynamic([
+    "explorer.exe","svchost.exe","lsass.exe","winlogon.exe","csrss.exe","services.exe",
+    "rundll32.exe","regsvr32.exe","msiexec.exe","wmiprvse.exe","taskhostw.exe","cmd.exe",
+    "powershell.exe","python.exe","notepad.exe","chrome.exe","winword.exe"
+]);
+let TrustedSigners = dynamic(["Microsoft","Windows","Google","Intel","NVIDIA","AMD","CrowdStrike","SentinelOne"]);
+// Suspicious DLL Loads
+let SuspiciousDLLs =
+DeviceImageLoadEvents
+| where Timestamp >= ago(Lookback)
+| where FileName endswith ".dll"
+| where FolderPath has_any (SuspiciousPaths)
+| where InitiatingProcessFileName in~ (TargetProcesses)
+| project Timestamp, DeviceName, FileName, FolderPath, SHA1, SHA256, InitiatingProcessFileName, InitiatingProcessCommandLine;
+// Unsigned / Untrusted Modules
+let UnsignedDLLs =
+DeviceFileCertificateInfo
+| where IsSigned == false or IsTrusted == false
+| project SHA1, Signer, IsSigned, IsTrusted;
+// Combine and Focus on Untrusted Loads
+let Combined = SuspiciousDLLs
+| join kind=inner (UnsignedDLLs) on SHA1
+| where not (Signer has_any (TrustedSigners))
+| project Timestamp, DeviceName, FileName, FolderPath, InitiatingProcessFileName, InitiatingProcessCommandLine, Signer, IsSigned, IsTrusted, SHA256;
+// Correlate with Recent Process Execution
+let RecentProcs = DeviceProcessEvents
+| where Timestamp >= ago(Lookback)
+| where FileName in~ (TargetProcesses)
+| project DeviceName, FileName, ProcessCommandLine, ProcessId, ProcessCreationTime = Timestamp;
+// Correlate within 5-minute window of process execution
+Combined
+| join kind=inner (
+    RecentProcs
+    | extend TimeKey = bin(ProcessCreationTime, 5m)
+) on DeviceName, $left.InitiatingProcessFileName == $right.FileName
+| where abs(datetime_diff('minute', Timestamp, ProcessCreationTime)) <= 5
+| summarize
+    FirstSeen = min(Timestamp),
+    LastSeen = max(Timestamp),
+    ExampleCmd = any(InitiatingProcessCommandLine),
+    LoadedPaths = make_set(FolderPath),
+    Signers = make_set(Signer)
+    by DeviceName, FileName, InitiatingProcessFileName, IsSigned, IsTrusted, SHA256
+| project DeviceName, FileName, InitiatingProcessFileName, IsSigned, IsTrusted, Signers, LoadedPaths, FirstSeen, LastSeen, ExampleCmd
+| order by LastSeen desc
