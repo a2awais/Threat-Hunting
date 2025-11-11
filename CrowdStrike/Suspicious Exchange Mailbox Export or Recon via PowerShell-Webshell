@@ -1,0 +1,62 @@
+#event_simpleName="ProcessRollup2"
+ /* optional: uncomment if you want to track the files downloaded from internet:
+  | ZoneIdentifier = 3 
+  */
+| in(field="FileName", values=[
+    "w3wp.exe","powershell.exe","pwsh.exe","cmd.exe","iisexpress.exe","dotnet.exe",
+    "rundll32.exe","cscript.exe","wscript.exe","conhost.exe"
+    /* optional: uncomment if you observed webshells using these runtimes:
+    ,"php-cgi.exe","python.exe","node.exe"
+    */
+    ])
+| NOT in(field="ParentBaseFileName", values=["QualysAgent.exe","SenseIR.exe","MonitoringHost.exe"])
+| ( 
+    CommandLine = "*New-MailboxExportRequest*" 
+ or CommandLine = "*Get-MailboxExportRequest*"
+ or CommandLine = "*Export-Mailbox*"
+ or CommandLine = "*Search-Mailbox*"
+ or CommandLine = "*Get-MailboxFolderStatistics*"
+ or CommandLine = "*Get-MessageTrackingLog*"
+ or CommandLine = "*Get-MailboxStatistics*"
+ or CommandLine = "*Get-MailboxDatabase*"
+ or CommandLine = "*Add-MailboxPermission*"
+ or CommandLine = "*Get-MailboxPermission*"
+ or CommandLine = "*New-ManagementRoleAssignment*"
+ or CommandLine = "*Get-Recipient*"
+ or CommandLine = "*Get-User*"
+ or CommandLine = "*ServerHealth*"
+ // Compliance / search cmdlets observed in mailbox-exfil cases
+ or CommandLine = "*New-ComplianceSearch*"
+ or CommandLine = "*Start-ComplianceSearch*"
+ or CommandLine = "*Get-ComplianceSearch*"
+ or CommandLine = "*Start-ComplianceSearchAction*"
+ // Message-trace / transport / auditing
+ or CommandLine = "*Get-MessageTrace*" 
+ or CommandLine = "*Search-MailboxAuditLog*"
+ // PowerShell / webshell & downloader & obfuscation indicators
+ or CommandLine = "*-EncodedCommand*"
+ or CommandLine = "*-ExecutionPolicy Bypass*"
+ or CommandLine = "*-NoProfile*"
+ or CommandLine = "Invoke-WebRequest"
+ or CommandLine = "*Invoke-RestMethod*"
+ or CommandLine = "*iwr *"
+ or CommandLine = "*curl *"
+ or CommandLine = "*wget *"
+ or CommandLine = "*certutil -decode*"
+ or CommandLine = "*certutil -encode*"
+ or CommandLine = "*bitsadmin*"
+ or CommandLine = "*Start-Job*"
+ or CommandLine = "*Start-Process*"
+)
+| join(
+    {
+      in(field="#event_simpleName", values=["NetworkConnectIP4", "NetworkConnectIP6"])
+        | in(field="RemotePort", values=["80","443","8080","8443","8000","8888","9000","53","21","22","25","587","3389"])
+    },
+    key = ContextProcessId,
+    field = TargetProcessId,
+    include = [RemoteIP, RemotePort, ContextBaseFileName, ContextUserName],
+    limit = 200000
+)
+// | NOT in(field="ContextBaseFileName", values=["OneDrive.exe","Teams.exe","chrome.exe","firefox.exe","msedge.exe","Dropbox.exe"]) to reduce noice add as per your envirnment
+| table([@timestamp, ComputerName, UserName, ContextBaseFileName, FileName, ParentBaseFileName, CommandLine, RemoteIP, RemotePort], limit=100000)
