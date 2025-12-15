@@ -1,0 +1,9 @@
+DeviceImageLoadEvents
+| where Timestamp > ago(1d)
+| where SHA1 != @"b2a2412c57b0fc2e6abf40d09d3ec0895102f428" // Legit wmsgapi.dll from Microsoft
+| where SHA1 != @"a01dc7a9ed2e4b9c3a6e05290a8b108f0e379498" // Legit msimg32.dll from Microsoft
+| where FolderPath contains "consent.exe" or InitiatingProcessFileName == "consent.exe"
+| where FileName in~ ("msimg32.dll", "version.dll", "rtworkq.dll", "wmsgapi.dll", "sh4nya_fuckav.dll", "shanya.dll")
+    or FileName contains "sh4nya" or FileName contains "shanya"
+| project Timestamp, DeviceName, FileName, FolderPath, SHA1, InitiatingProcessFileName, InitiatingProcessSHA256
+| order by Timestamp desc
