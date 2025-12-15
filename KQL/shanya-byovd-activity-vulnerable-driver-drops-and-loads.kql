@@ -9,5 +9,5 @@ DeviceFileEvents
 | where ActionType == "DriverLoad"
 | where FileName in~ ("throttlestop.sys", "hlpdrv.sys")
 | project Timestamp, DeviceName, FileName, FolderPath, InitiatingProcessFileName)
-
 | order by Timestamp desc
+
