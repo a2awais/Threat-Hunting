@@ -1,0 +1,12 @@
+DeviceFileEvents
+| where Timestamp > ago(1d)
+| where FileName in~ ("throttlestop.sys", "rwdrv.sys", "hlpdrv.sys", "wmp.dll")
+| where ActionType in ("FileCreated", "FileModified")
+| project Timestamp, DeviceName, FileName, FolderPath, SHA256, InitiatingProcessFileName
+| union
+(DeviceEvents
+| where Timestamp > ago(30d)
+| where ActionType == "DriverLoad"
+| where FileName in~ ("throttlestop.sys", "hlpdrv.sys")
+| project Timestamp, DeviceName, FileName, FolderPath, InitiatingProcessFileName)
+| order by Timestamp desc
