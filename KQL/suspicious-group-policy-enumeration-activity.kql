@@ -53,5 +53,5 @@ DeviceProcessEvents
 ) on DeviceId
 | extend RarityScore = rand()  // Placeholder; replace with actual rarity logic if using entity analytics
 | project Timestamp, DeviceName, AccountName, FileName, InitiatingProcessFileName, ProcessCommandLine, RemoteIP, RemoteUrl, RemotePort, RarityScore
-
 | summarize Count=count() by DeviceName, FileName, InitiatingProcessFileName, AccountName, ProcessCommandLine
+
