@@ -1,0 +1,56 @@
+// MITRE T1615 - Group Policy Discovery
+let Lookback = 1d;
+DeviceProcessEvents
+| where Timestamp >= ago(Lookback)
+// Common shells - LOLBins used during discovery
+| where FileName in~ (
+    "cmd.exe","powershell.exe","pwsh.exe",
+    "wmic.exe","rundll32.exe"
+)
+// High-confidence Group Policy discovery commands
+| where (
+    // Native GPO & RSOP enumeration
+    ProcessCommandLine has_any (
+        "gpresult",
+        "gpresult /r",
+        "gpresult /z",
+        "rsop.msc",
+        "secedit /export",
+        "secedit /analyze"
+    )
+    // Registry-based policy discovery
+    or ProcessCommandLine has_any (
+        @"reg query HKLM\Software\Policies",
+        @"reg query HKCU\Software\Policies"
+    )
+    // PowerShell GPO discovery
+    or ProcessCommandLine has_any (
+        "Get-GPO",
+        "Get-GPInheritance",
+        "Get-GPResultantSetOfPolicy",
+        "Get-DomainGPO",
+        "Get-DomainGPOLocalGroup"
+    )
+    or ProcessCommandLine has_any (
+        "ldapsearch",  // For potential LDAP tools
+        "groupPolicyContainer"  // LDAP filter patterns
+    )
+)
+// Reduce OS / admin noise
+| where InitiatingProcessFileName !in~ (
+    "gpscript.exe",
+    "svchost.exe",
+    "mmc.exe",
+    "Microsoft.Management.Infrastructure.Native.exe"
+)
+// Enrich with SYSVOL access
+| join kind=leftouter (
+    DeviceNetworkEvents
+    | where Timestamp >= ago(Lookback)
+    | where RemotePort in (445, 389, 636)
+    | where RemoteUrl has_any (@"\SYSVOL\", "groupPolicyContainer")  // Added LDAP object targeting
+    | project DeviceId, RemoteIP, RemoteUrl, RemotePort
+) on DeviceId
+| extend RarityScore = rand()  // Placeholder; replace with actual rarity logic if using entity analytics
+| project Timestamp, DeviceName, AccountName, FileName, InitiatingProcessFileName, ProcessCommandLine, RemoteIP, RemoteUrl, RemotePort, RarityScore
+| summarize Count=count() by DeviceName, FileName, InitiatingProcessFileName, AccountName, ProcessCommandLine
