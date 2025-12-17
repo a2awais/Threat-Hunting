@@ -1,0 +1,26 @@
+// MITRE ATT&CK: T1059.006 – Command and Scripting Interpreter: Python
+let Lookback = 1d;
+let SuspiciousPaths = dynamic(["\\AppData\\", "\\Temp\\", "\\Downloads\\", "\\Public\\", "\\Users\\Public\\"]);
+let SuspiciousImports = dynamic(["import requests", "import socket", "import subprocess", "import base64", "import ctypes", "import urllib", "exec(", "eval("]);
+let DownloadIndicators = dynamic(["pip install", "pip3 install", "wget", "curl", "powershell", "bitsadmin"]);
+DeviceProcessEvents
+| where Timestamp >= ago(Lookback)
+// High-confidence malicious execution patterns
+// Python interpreters commonly abused by attackers
+| where FileName in~ ("python.exe", "python3.exe", "pythonw.exe", "py.exe")
+// Inline execution (very strong signal)
+| where ProcessCommandLine has_any (" -c ", " -c\"")
+    // Execution from user-writable paths
+    or ProcessCommandLine has_any (SuspiciousPaths)
+    // Common attacker Python modules / behaviors
+    or ProcessCommandLine has_any (SuspiciousImports)
+    // Download / execution patterns
+    or ProcessCommandLine has_any (DownloadIndicators)
+// Reduce developer / enterprise automation noise
+| where InitiatingProcessFileName !in~ (
+    "code.exe", "pycharm64.exe", "idea64.exe", "devenv.exe", "MsBuild.exe",
+    "jenkins.exe", "python.exe", "jupyter.exe", "anaconda.exe", "spyder.exe",
+    "vscode.exe", "explorer.exe", "node.exe", "jupyter-notebook.exe", "conda.exe", "cursor.exe", "pythonw.exe"  // Added common benign/dev tools
+)
+| where AccountName !~ "system"
+| project Timestamp, DeviceName, AccountName, FileName, InitiatingProcessFileName, InitiatingProcessSHA1, ProcessCommandLine, FolderPath
