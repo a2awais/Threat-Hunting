@@ -1,0 +1,14 @@
+// Ref - https://www.koi.ai/blog/urban-vpn-browser-extension-ai-conversations-data-collection
+
+| "#event_simpleName" = InstalledBrowserExtension
+| in(BrowserExtensionId, values=[
+eppiocemhmnlbhjplcgkofciiegomcon, // (Urban VPN Proxy)
+almalgbpmcfpdaopimbdchdliminoign, // (Urban Browser Guard)
+feflcgofneboehfdeebcfglbodaceghj, // (Urban Ad Blocker)
+pphgdbgldlmicfdkhondlafkiomnelnk, // (1ClickVPN Proxy for Chrome)
+nimlmejbmnecnaghgmbahmbaddhjbecg, // (Urban VPN Proxy)
+jckkfbfmofganecnnpfndfjifnimpcel, // (Urban Browser Guard)
+gcogpdjkkamgkakkjgeefgpcheonclca, // (Urban Ad Blocker)
+deopfbighgnpgfmhjeccdifdmhcjckoe // (1ClickVPN Proxy for Edge)
+])
+| groupBy([ComputerName, UserName, BrowserProfileName, BrowserExtensionName, BrowserExtensionRequestedPermissions, BrowserFilePath])
