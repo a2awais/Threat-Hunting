@@ -10,6 +10,81 @@ let UrbanVpnEextension = dynamic([
     "Gcogpdjkkamgkakkjgeefgpcheonclca",
     "deopfbighgnpgfmhjeccdifdmhcjckoe"
 ]);
+// Threat Intel: https://www.infosecurity-magazine.com/news/18-malicious-chrome-edge-extensions/
+let LegitimateExtensionsTurnedMalicious = dynamic([
+"Kgmeffmlnkfnjpgmdndccklfigfhajen",
+"Dpdibkjjgbaadnnjhkmmnenkmbnhpobj",
+"Gaiceihehajjahakcglkhmdbbdclbnlf",
+"Mlgbkfnjdmaoldgagamcnommbbnhfnhf",
+"Eckokfcjbjbgjifpcbdmengnabecdakp",
+"Mgbhdehiapbjamfgekfpebmhmnmcmemg",
+"cbajickflblmpjodnjoldpiicfmecmif",
+"Pdbfcnhlobhoahcamoefbfodpmklgmjm",
+"Eokjikchkppnkdipbiggnmlkahcdkikp",
+"Ihbiedpeaicgipncdnnkikeehnjiddck",
+"Jjdajogomggcjifnjgkpghcijgkbcjdi",
+"Mmcnmppeeghenglmidpmjkaiamcacmgm",
+"Ojdkklpgpacpicaobnhankbalkkgaafp",
+"Lodeighbngipjjedfelnboplhgediclp",
+"Hkjagicdaogfgdifaklcgajmgefjllmd",
+"Gflkbgebojohihfnnplhbdakoipdbpdm",
+"Kpilmncnoafddjpnbhepaiilgkdcieaf",
+"caibdnkmpnjhjdfnomfhijhmebigcelo"
+]);
+// Threat Intel: https://gitlab-com.gitlab.io/gl-security/security-tech-notes/threat-intelligence-tech-notes/malicious-browser-extensions-feb-2025/
+let MaliciousBrowserExtensions = dynamic([
+"Mdaboflcmhejfihjcbmdiebgfchigjcf",
+"Gaoflciahikhligngeccdecgfjngejlh",
+"fedimamkpgiemhacbdhkkaihgofncola",
+"jlhgcomgldfapimdboelilfcipigkgik",
+"Jdjldbengpgdcfkljfdmakdgmfpneldd",
+"deljjimclpnhngmikaiiodgggdniaooh",
+"Giaoehhefkmchjbbdnahgeppblbdejmj",
+"Hmooaemjmediafeacjplpbpenjnpcneg",
+"Acbiaofoeebeinacmcknopaikmecdehl",
+"Nlgphodeccebbcnkgmokeegopgpnjfkc",
+"Fbcgkphadgmbalmlklhbdagcicajenei",
+"Alplpnakfeabeiebipdmaenpmbgknjce",
+"Ogcaehilgakehloljjmajoempaflmdci",
+"Onomjaelhagjjojbkcafidnepbfkpnee",
+"bpconcjcammlapcogcnnelfmaeghhagj",
+"gdocgbfmddcfnlnpmnghmjicjognhonm"
+]);
+// Threat Intel: https://cybersecuritynews.com/35-google-chrome-extensions-hacked/
+let ChromeExtensionSupplyChainAttack  = dynamic([
+"nnpnnpemnckcfdebeekibpiijlicmpom",
+"kkodiihpgodmdankclfibbiphjkfdenh",
+"oaikpkmjciadfpddlpjjdapglcihgdle",
+"dpggmcodlahmljkhlmpgpdcffdaoccni",
+"acmfnomgphggonodopogfbmkneepfgnh",
+"mnhffkhmpnefgklngfmlndmkimimbphc",
+"cedgndijpacnfbdggppddacngjfdkaca",
+"bbdnohkpnbkdkmnkddobeafboooinpla",
+"egmennebgadmncfjafcemlecimkepcle",
+"bibjgkidgpfbblifamdlkdlhgihmfohh",
+"befflofjcniongenjmbkgkoljhgliihe",
+"pkgciiiancapdlpcbppfkmeaieppikkk",
+"llimhhconnjiflfimocjggfjdlmlhblm",
+"oeiomhmbaapihbilkfkhmlajkeegnjhe",
+"ekpkdmohpdnebfedjjfklhpefgpgaaji",
+"epikoohpebngmakjinphfiagogjcnddm",
+"miglaibdlgminlepgeifekifakochlka",
+"eanofdhdfbcalhflpbdipkjjkoimeeod",
+"ogbhbgkiojdollpjbhbamafmedkeockb",
+"bgejafhieobnfpjlpcjjggoboebonfcg",
+"igbodamhgjohafcenbcljfegbipdfjpk",
+"mbindhfolmpijhodmgkloeeppmkhpmhc",
+"hodiladlefdpcbemnbbcpclbmknkiaem",
+"pajkjnmeojmbapicmbpliphjmcekeaac",
+"ndlbedplllcgconngcnfmkadhokfaaln",
+"epdjhgbipjpbbhoccdeipghoihibnfja",
+"cplhlgabfijoiabgkigdafklbhhdkahj",
+"jiofmdifioeejeilfkpegipdjiopiekl",
+"hihblcmlaaademjlakdpicchbjnnnkbo",
+"lbneaaedflankmgmfbmaplggbmjjmbae",
+"eaijffijbobmnonfhilihbejadplhddo",
+"hmiaoahjllhfgebflooeeefeiafpkfde"
+]);
 DeviceTvmBrowserExtensions
-| where ExtensionId has_any (UrbanVpnEextension)
+| where ExtensionId has_any (UrbanVpnEextension) or ExtensionId has_any (LegitimateExtensionsTurnedMalicious) or ExtensionId has_any (MaliciousBrowserExtensions) or ExtensionId has_any (ChromeExtensionSupplyChainAttack)
 | project BrowserName, ExtensionName, ExtensionDescription, ExtensionRisk, ExtensionVendor, IsActivated
