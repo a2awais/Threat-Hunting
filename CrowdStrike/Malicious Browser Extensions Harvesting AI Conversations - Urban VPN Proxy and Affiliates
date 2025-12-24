@@ -1,6 +1,8 @@
-// Ref - https://www.koi.ai/blog/urban-vpn-browser-extension-ai-conversations-data-collection
+// Malicious Browser Extensions from differene threat intel sources 
 
 | "#event_simpleName" = InstalledBrowserExtension
+
+// Threat Intel: https://www.koi.ai/blog/urban-vpn-browser-extension-ai-conversations-data-collection
 | in(BrowserExtensionId, values=[
 eppiocemhmnlbhjplcgkofciiegomcon, // (Urban VPN Proxy)
 almalgbpmcfpdaopimbdchdliminoign, // (Urban Browser Guard)
@@ -9,6 +11,79 @@ pphgdbgldlmicfdkhondlafkiomnelnk, // (1ClickVPN Proxy for Chrome)
 nimlmejbmnecnaghgmbahmbaddhjbecg, // (Urban VPN Proxy)
 jckkfbfmofganecnnpfndfjifnimpcel, // (Urban Browser Guard)
 gcogpdjkkamgkakkjgeefgpcheonclca, // (Urban Ad Blocker)
-deopfbighgnpgfmhjeccdifdmhcjckoe // (1ClickVPN Proxy for Edge)
+deopfbighgnpgfmhjeccdifdmhcjckoe, // (1ClickVPN Proxy for Edge)
+
+// Threat Intel: https://www.infosecurity-magazine.com/news/18-malicious-chrome-edge-extensions/
+Kgmeffmlnkfnjpgmdndccklfigfhajen,
+Dpdibkjjgbaadnnjhkmmnenkmbnhpobj,
+Gaiceihehajjahakcglkhmdbbdclbnlf,
+Mlgbkfnjdmaoldgagamcnommbbnhfnhf,
+Eckokfcjbjbgjifpcbdmengnabecdakp,
+Mgbhdehiapbjamfgekfpebmhmnmcmemg,
+cbajickflblmpjodnjoldpiicfmecmif,
+Pdbfcnhlobhoahcamoefbfodpmklgmjm,
+Eokjikchkppnkdipbiggnmlkahcdkikp,
+Ihbiedpeaicgipncdnnkikeehnjiddck,
+Jjdajogomggcjifnjgkpghcijgkbcjdi,
+Mmcnmppeeghenglmidpmjkaiamcacmgm,
+Ojdkklpgpacpicaobnhankbalkkgaafp,
+Lodeighbngipjjedfelnboplhgediclp,
+Hkjagicdaogfgdifaklcgajmgefjllmd,
+Gflkbgebojohihfnnplhbdakoipdbpdm,
+Kpilmncnoafddjpnbhepaiilgkdcieaf,
+caibdnkmpnjhjdfnomfhijhmebigcelo,
+
+// Threat Intel: https://gitlab-com.gitlab.io/gl-security/security-tech-notes/threat-intelligence-tech-notes/
+Mdaboflcmhejfihjcbmdiebgfchigjcf,
+Gaoflciahikhligngeccdecgfjngejlh,
+fedimamkpgiemhacbdhkkaihgofncola,
+jlhgcomgldfapimdboelilfcipigkgik,
+Jdjldbengpgdcfkljfdmakdgmfpneldd,
+deljjimclpnhngmikaiiodgggdniaooh,
+Giaoehhefkmchjbbdnahgeppblbdejmj,
+Hmooaemjmediafeacjplpbpenjnpcneg,
+Acbiaofoeebeinacmcknopaikmecdehl,
+Nlgphodeccebbcnkgmokeegopgpnjfkc,
+Fbcgkphadgmbalmlklhbdagcicajenei,
+Alplpnakfeabeiebipdmaenpmbgknjce,
+Ogcaehilgakehloljjmajoempaflmdci,
+Onomjaelhagjjojbkcafidnepbfkpnee,
+bpconcjcammlapcogcnnelfmaeghhagj,
+gdocgbfmddcfnlnpmnghmjicjognhonm,
+
+// Threat Intel: https://cybersecuritynews.com/35-google-chrome-extensions-hacked/
+nnpnnpemnckcfdebeekibpiijlicmpom,
+kkodiihpgodmdankclfibbiphjkfdenh,
+oaikpkmjciadfpddlpjjdapglcihgdle,
+dpggmcodlahmljkhlmpgpdcffdaoccni,
+acmfnomgphggonodopogfbmkneepfgnh,
+mnhffkhmpnefgklngfmlndmkimimbphc,
+cedgndijpacnfbdggppddacngjfdkaca,
+bbdnohkpnbkdkmnkddobeafboooinpla,
+egmennebgadmncfjafcemlecimkepcle,
+bibjgkidgpfbblifamdlkdlhgihmfohh,
+befflofjcniongenjmbkgkoljhgliihe,
+pkgciiiancapdlpcbppfkmeaieppikkk,
+llimhhconnjiflfimocjggfjdlmlhblm,
+oeiomhmbaapihbilkfkhmlajkeegnjhe,
+ekpkdmohpdnebfedjjfklhpefgpgaaji,
+epikoohpebngmakjinphfiagogjcnddm,
+miglaibdlgminlepgeifekifakochlka,
+eanofdhdfbcalhflpbdipkjjkoimeeod,
+ogbhbgkiojdollpjbhbamafmedkeockb,
+bgejafhieobnfpjlpcjjggoboebonfcg,
+igbodamhgjohafcenbcljfegbipdfjpk,
+mbindhfolmpijhodmgkloeeppmkhpmhc,
+hodiladlefdpcbemnbbcpclbmknkiaem,
+pajkjnmeojmbapicmbpliphjmcekeaac,
+ndlbedplllcgconngcnfmkadhokfaaln,
+epdjhgbipjpbbhoccdeipghoihibnfja,
+cplhlgabfijoiabgkigdafklbhhdkahj,
+jiofmdifioeejeilfkpegipdjiopiekl,
+hihblcmlaaademjlakdpicchbjnnnkbo,
+lbneaaedflankmgmfbmaplggbmjjmbae,
+eaijffijbobmnonfhilihbejadplhddo,
+hmiaoahjllhfgebflooeeefeiafpkfde
 ])
-| groupBy([ComputerName, UserName, BrowserProfileName, BrowserExtensionName, BrowserExtensionRequestedPermissions, BrowserFilePath])
+
+| groupBy([ComputerName, UserName, BrowserExtensionId, BrowserProfileName, BrowserExtensionName, BrowserExtensionRequestedPermissions, BrowserFilePath])
