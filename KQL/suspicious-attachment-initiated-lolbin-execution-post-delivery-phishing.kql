@@ -1,0 +1,57 @@
+let Lookback = 1d;
+// Suspicious LOLBin children (core phishing downloaders)
+let SuspiciousChildren = dynamic([
+    "powershell.exe","pwsh.exe","cmd.exe","mshta.exe","rundll32.exe",
+    "regsvr32.exe","certutil.exe","bitsadmin.exe","wmic.exe","expand.exe"
+]);
+// Malicious command-line IOAs (from real spearphishing)
+let SuspiciousCmdPatterns = dynamic([
+    "-EncodedCommand","FromBase64String","ExecutionPolicy Bypass",
+    "Invoke-WebRequest","IWR","Invoke-RestMethod","IRM","DownloadFile","DownloadString",
+    "net.webclient","iex","certutil -decode","bitsadmin /transfer",
+    "http://","https://"
+]);
+// Attachment opener parents
+let AttachmentParents = dynamic([
+    "winword.exe","excel.exe","powerpnt.exe","outlook.exe",
+    "acrord32.exe","acrord64.exe","explorer.exe","msedge.exe","chrome.exe","firefox.exe"
+]);
+// Suspicious extensions
+let SuspiciousExtensions = dynamic([".docm",".xlsm",".pptm",".rtf",".pdf",".lnk",".htm",".html",".one",".iso",".js",".vbs",".zip",".scr"]);
+// User paths
+let UserPaths = dynamic([@"\Downloads\", @"\Temp\", @"\AppData\Local\Temp\", @"\Desktop\", @"\INetCache\"]);
+// Main query: Suspicious process spawns from attachment-like parents
+DeviceProcessEvents
+| where Timestamp >= ago(Lookback)
+| where FileName in~ (SuspiciousChildren)
+| where ProcessCommandLine has_any (SuspiciousCmdPatterns)
+  and ProcessCommandLine has_any (UserPaths)  // Staging in downloads/temp
+| where InitiatingProcessFileName in~ (AttachmentParents) 
+     or InitiatingProcessParentFileName in~ (AttachmentParents)  // Chaining support
+| where AccountName !endswith "$"  // Interactive users only
+| where InitiatingProcessFileName !in~ ("teams.exe","onedrive.exe","slack.exe")
+// Optional enrich: Was a suspicious file created shortly before?
+| join kind=leftouter (
+    DeviceFileEvents
+    | where Timestamp >= ago(Lookback)
+    | where ActionType == "FileCreated"
+    | where FolderPath has_any (UserPaths)
+    | extend LowerFileName = tolower(FileName)
+    | mv-apply Extension = SuspiciousExtensions to typeof(string) on (
+        where LowerFileName endswith tolower(Extension)
+    )
+    | where isnotempty(Extension)
+    | where InitiatingProcessFileName in~ ("outlook.exe","msedge.exe","chrome.exe","firefox.exe","explorer.exe")
+    | project FileTimestamp = Timestamp, DeviceId, 
+              AttachmentFile = FileName, AttachmentPath = FolderPath, FileCreator = InitiatingProcessFileName
+) on DeviceId
+| where isnull(FileTimestamp)  // Show all suspicious processes
+     or (Timestamp > FileTimestamp and (Timestamp - FileTimestamp) < 4h)  // Broader window
+| project 
+    Timestamp, DeviceName, AccountName,
+    ParentProcess = InitiatingProcessFileName,
+    ChildProcess = FileName,
+    ProcessCommandLine,
+    GrandParentProcess = InitiatingProcessParentFileName,
+    AttachmentFile, AttachmentPath, FileCreator
+| order by Timestamp desc
