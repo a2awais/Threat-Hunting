@@ -1,6 +1,6 @@
 // Driver inventory monitoring with available Defender fields
 DeviceImageLoadEvents
-| where Timestamp > ago(30d)
+| where Timestamp > ago(7d)
 // Join with DeviceFileEvents to get signing info
 | join kind=inner (
     DeviceFileEvents
@@ -25,3 +25,4 @@ DeviceImageLoadEvents
     InitiatingProcessVersionInfoCompanyName,
     IsTempLoad = iff(FolderPath1 contains @"Temp\", true, false),
     SHA256
+
