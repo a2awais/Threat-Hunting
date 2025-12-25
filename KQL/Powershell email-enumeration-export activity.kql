@@ -1,4 +1,4 @@
-let timeframe = 30d;
+let timeframe = 7d;
 let SuspiciousCmdlets = dynamic([
     "Get-Mailbox", "Get-Recipient", "Get-User", "Get-DistributionGroupMember", 
     "Export-Csv", "Out-File", "ConvertTo-Csv"
@@ -28,3 +28,4 @@ DeviceProcessEvents
     FolderPath, FirstFileWrite, FileCount, StealthUsed, SuspiciousParent
 | where EventCount > 1 or isnotempty(FileCount)
 | order by FirstFileWrite desc
+
