@@ -1,3 +1,5 @@
+// References: https://mrd0x.com/filefix-clickfix-alternative/
+
 let suspiciousRegistry = DeviceRegistryEvents
 | where RegistryKey has "RunMRU"
 | where RegistryValueData has_any ("powershell", "curl", "Invoke-WebRequest", "IEX")
@@ -11,5 +13,3 @@ DeviceProcessEvents
 
 | join kind=inner (suspiciousRegistry) on DeviceName
 | where ProcessTimestamp > RegistryTimestamp
-
-// References: https://mrd0x.com/filefix-clickfix-alternative/
