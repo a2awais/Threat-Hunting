@@ -2,13 +2,13 @@
 
 | "#event_simpleName" = InstalledBrowserExtension
 
-// Threat Intel: https://www.ox.security/blog/malicious-chrome-extensions-steal-chatgpt-deepseek-conversations/
 | in(BrowserExtensionId, values=[
+
+// Threat Intel: https://www.ox.security/blog/malicious-chrome-extensions-steal-chatgpt-deepseek-conversations/
 fnmihdojmnkclgjpcoonokmkhjpjechg, // (Chat GPT for Chrome with GPT-5, Claude Sonnet & DeepSeek AI)
 inhcgfpbfdjbjogdfjbclgolkmhnooop, // (AI Sidebar with Deepseek, ChatGPT, Claude and more.)
 
 // Threat Intel: https://www.koi.ai/blog/urban-vpn-browser-extension-ai-conversations-data-collection
-| in(BrowserExtensionId, values=[
 eppiocemhmnlbhjplcgkofciiegomcon, // (Urban VPN Proxy)
 almalgbpmcfpdaopimbdchdliminoign, // (Urban Browser Guard)
 feflcgofneboehfdeebcfglbodaceghj, // (Urban Ad Blocker)
