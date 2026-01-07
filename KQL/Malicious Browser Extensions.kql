@@ -1,4 +1,8 @@
-let Lookback = 7d;
+// Threat Intel: https://www.ox.security/blog/malicious-chrome-extensions-steal-chatgpt-deepseek-conversations/
+let StealAIconversations = dynamic([
+    "fnmihdojmnkclgjpcoonokmkhjpjechg",
+    "inhcgfpbfdjbjogdfjbclgolkmhnooop"
+]);
 // Threat Intel: https://www.koi.ai/blog/urban-vpn-browser-extension-ai-conversations-data-collection 
 let UrbanVpnEextension = dynamic([
     "eppiocemhmnlbhjplcgkofciiegomcon",
@@ -86,5 +90,6 @@ let ChromeExtensionSupplyChainAttack  = dynamic([
 "hmiaoahjllhfgebflooeeefeiafpkfde"
 ]);
 DeviceTvmBrowserExtensions
-| where ExtensionId has_any (UrbanVpnEextension) or ExtensionId has_any (LegitimateExtensionsTurnedMalicious) or ExtensionId has_any (MaliciousBrowserExtensions) or ExtensionId has_any (ChromeExtensionSupplyChainAttack)
+| where ExtensionId has_any (UrbanVpnEextension) or ExtensionId has_any (LegitimateExtensionsTurnedMalicious) or ExtensionId has_any (MaliciousBrowserExtensions)
+or ExtensionId has_any (ChromeExtensionSupplyChainAttack) or ExtensionId has_any (StealAIconversations)
 | project BrowserName, ExtensionName, ExtensionDescription, ExtensionRisk, ExtensionVendor, IsActivated
