@@ -1,0 +1,100 @@
+let LegitFiles = dynamic(["OpenHandleCollector.exe", "VC_redist.x64.exe", "VC_redist.x86.exe", "DismHost.exe", "UDCInfInstaller.exe"]); // add legit accordingly 
+DeviceProcessEvents
+| where not(FileName in~ (LegitFiles))
+| where 
+    // PowerShell recursively hunting msbuild.exe across C:\
+    (
+        FileName =~ "powershell.exe"
+        and ProcessCommandLine has "gci "
+        and ProcessCommandLine has "C:\\"
+        and ProcessCommandLine has "-filter msbuild.exe"
+        and ProcessCommandLine has "-r"
+        and ProcessCommandLine has "-ea 0"
+    )
+    or
+    // Windows Defender tampering
+    (
+        FileName =~ "powershell.exe"
+        and (
+            ProcessCommandLine has "Set-MpPreference"
+            or ProcessCommandLine has "Add-MpPreference"
+        )
+        and ProcessCommandLine has_any (
+            "DisableRealtimeMonitoring",
+            "ExclusionPath",
+            "ExclusionExtension",
+            "ExclusionProcess"
+        )
+    )
+    or
+    // PowerShell downloading
+    (
+        FileName =~ "powershell.exe"
+        and (
+            ProcessCommandLine has "iwr http" 
+            or ProcessCommandLine has "Invoke-WebRequest http"
+            or ProcessCommandLine has "Start-BitsTransfer"
+        )
+        and (
+            ProcessCommandLine has "ProgramData"
+            or ProcessCommandLine has "Temp"
+            or ProcessCommandLine has "AppData"
+        )
+        and ProcessCommandLine has_any (".exe", ".proj", ".dll", ".ps1")
+    )
+    or
+    // MSBuild executing suspicious .proj file, spawned by PowerShell
+    (
+        FileName =~ "msbuild.exe"
+        and ProcessCommandLine has ".proj"
+        and InitiatingProcessFileName =~ "powershell.exe"
+        and (
+            FolderPath contains "ProgramData"
+            or FolderPath contains "Temp"
+            or FolderPath contains "AppData"
+        )
+    )
+    or
+    // Suspicious executable launch from hidden path by PowerShell/MSBuild
+    (
+        FileName endswith ".exe"
+        and (
+            FolderPath contains "ProgramData"
+            or FolderPath contains "Temp"
+        )
+        and InitiatingProcessFileName in~ ("powershell.exe", "msbuild.exe")
+    )
+// Union with file drops and persistence
+| union (
+    DeviceFileEvents
+    | where
+        // Persistence: .url created in Startup folder
+        (
+            FolderPath contains "Startup"
+            and (FileName endswith ".url")
+            and ActionType == "FileCreated"
+        )
+        or
+        // Staging files dropped by suspicious parents
+        (
+            (
+                FolderPath contains "ProgramData"
+                or FolderPath contains "Temp"
+            )
+            and FileName has_any (".proj", "pins.dat", "staxs.exe", "tybd7.exe")
+            and InitiatingProcessFileName in~ ("powershell.exe", "msbuild.exe")
+            and ActionType == "FileCreated"
+        )
+)
+| project 
+    Timestamp, 
+    DeviceName, 
+    AccountName,
+    ActionType,
+    FileName, 
+    FolderPath, 
+    ProcessCommandLine, 
+    InitiatingProcessFileName, 
+    InitiatingProcessCommandLine,
+    SHA256
+| order by Timestamp desc
