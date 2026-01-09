@@ -1,0 +1,22 @@
+let C2Domains = dynamic([
+    "deepaichats.com",
+    "chatsaigpt.com",
+    "chataigpt.pro",
+    "chatgptsidebar.pro"
+]);
+DeviceNetworkEvents
+| where InitiatingProcessFileName =~ "chrome.exe"
+| where RemoteUrl has_any (C2Domains)
+| where ActionType == @"ConnectionSuccess"
+| where RemotePort == 443
+| project
+    Timestamp,
+    DeviceName,
+    InitiatingProcessRemoteSessionDeviceName,
+    InitiatingProcessAccountName,
+    InitiatingProcessFileName,
+    RemoteUrl,
+    RemoteIP
+| order by Timestamp desc
+
+
