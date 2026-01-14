@@ -1,0 +1,69 @@
+// Intel: https://www.cloudsek.com/blog/reborn-in-rust-muddywater-evolves-tooling-with-rustywater-implant
+let Lookback = 1d;
+// Writable paths abused by MuddyWater/RustyWater
+let SuspiciousPaths = dynamic([
+    @"\ProgramData\",
+    @"\Users\Public\",
+    @"\AppData\Roaming\",
+    @"\AppData\Local\Temp\"
+]);
+// Office macro launch points
+let OfficeProcs = dynamic([
+    "winword.exe",
+    "excel.exe",
+    "powerpnt.exe"
+]);
+// Script + LOLBins used post-macro
+let LOLBins = dynamic([
+    "cmd.exe",
+    "powershell.exe",
+    "mshta.exe",
+    "rundll32.exe",
+    "wscript.exe",
+    "cscript.exe"
+]);
+// Known MuddyWater/RustyWater style payload names
+let SuspiciousPayloadNames = dynamic([
+    "reddit.exe",
+    "art.exe",
+    "cloud.exe",
+    "nginx.exe"
+]);
+DeviceProcessEvents
+| where Timestamp >= ago(Lookback)
+| where
+    (
+    InitiatingProcessFileName in~ (OfficeProcs)
+    and FileName in~ (LOLBins)
+    )
+| where FolderPath has_any (SuspiciousPaths)
+// Optional: payload name enrichment - Intel Based [1]
+| extend KnownPayloadName = iff(FileName in~ (SuspiciousPayloadNames), true, false)
+// Optional: persistence via Run key - Intel Based [2]
+| join kind=leftouter (
+    DeviceRegistryEvents
+    | where Timestamp >= ago(Lookback)
+    | where RegistryKey has @"\Software\Microsoft\Windows\CurrentVersion\Run"
+) on DeviceId
+// Optional: dropped staging artifacts - Intel Based [3]
+| join kind=leftouter (
+    DeviceFileEvents
+    | where Timestamp >= ago(Lookback)
+    | where FileName == "CertificationKit.ini"
+) on DeviceId
+| project
+    Timestamp,
+    DeviceName,
+    AccountName,
+    FileName,
+    FolderPath,
+    ProcessCommandLine,
+    InitiatingProcessFileName,
+    InitiatingProcessCommandLine,
+    KnownPayloadName,
+    RegistryKey,
+    RegistryValueName,
+    RegistryValueData,
+    FileName1 = FileName1,
+    FolderPath1 = FolderPath1
+| order by Timestamp desc
