@@ -66,4 +66,5 @@ DeviceProcessEvents
     RegistryValueData,
     FileName1 = FileName1,
     FolderPath1 = FolderPath1
+
 | order by Timestamp desc
