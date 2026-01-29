@@ -1,0 +1,30 @@
+DeviceProcessEvents
+| where Timestamp > ago(3d)
+| where FileName =~ "conhost.exe"
+| where ProcessCommandLine has "--headless"
+| where ProcessCommandLine has_any (
+    "svchost.exe",
+    "synaptics.exe",
+    "certutil -decode",
+    "Users\\Public",
+    "AppData\\Local",
+    "AppData\\Roaming",
+    // Optional - Remove in case of noise
+    "Temp", 
+    "tmp"
+)
+| where 
+    (
+        ProcessCommandLine has_any (".ico ", ".png ", "MRB_", "DA_NEW_VER_", "BOT") 
+        or InitiatingProcessCommandLine has_any ("cmd.exe", "powershell.exe", "curl ", "start ", "certutil -decode")
+    )
+| project 
+    Timestamp,
+    DeviceName,
+    AccountName,
+    FileName,
+    ProcessCommandLine,
+    InitiatingProcessFileName,
+    InitiatingProcessCommandLine,
+    FolderPath
+| order by Timestamp desc
