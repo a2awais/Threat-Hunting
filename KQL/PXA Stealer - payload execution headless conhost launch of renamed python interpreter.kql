@@ -27,4 +27,5 @@ DeviceProcessEvents
     InitiatingProcessFileName,
     InitiatingProcessCommandLine,
     FolderPath
+
 | order by Timestamp desc
