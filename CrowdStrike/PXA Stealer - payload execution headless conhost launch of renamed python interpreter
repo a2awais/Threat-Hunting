@@ -1,0 +1,35 @@
+#event_simpleName = ProcessRollup2
+| FileName = "cmd.exe"
+| in(field="ParentBaseFileName", values=[
+    "powershell.exe",
+    "pwsh.exe",
+    "wscript.exe",
+    "cscript.exe",
+    "mshta.exe",
+    "winword.exe",
+    "excel.exe",
+    "outlook.exe",
+    "msiexec.exe"
+])
+| ( CommandLine = "*curl*"
+  AND CommandLine = "*-s*"
+  AND CommandLine = "*-o*"
+  AND CommandLine = "*.pdf*"
+  AND CommandLine = "*del /s /q*"
+  )
+  (
+  CommandLine = "*Users\\Public*"
+  OR CommandLine = "AppData\\Local"
+  OR CommandLine = "AppData\\Roaming"
+  OR CommandLine = "*conhost.exe*"
+  OR CommandLine = "*--headless*"
+  )
+| table([
+    @timestamp,
+    aid,
+    ComputerName,
+    UserName,
+    FileName,
+    CommandLine,
+    ParentBaseFileName
+])
