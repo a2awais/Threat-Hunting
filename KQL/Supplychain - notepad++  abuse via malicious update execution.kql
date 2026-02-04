@@ -76,4 +76,5 @@ UpdaterExecution
     ChildCmd,
     LoadedModule,
     ModulePath
+
 | order by Timestamp desc
