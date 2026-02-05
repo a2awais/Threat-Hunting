@@ -1,80 +1,128 @@
-let Lookback = 90d; // adjust Accordignly
-// Notepad++ updater execution
-let UpdaterExecution =
-DeviceProcessEvents
-| where Timestamp > ago(Lookback)
-| where FileName in~ ("gup.exe", "update.exe")
-// | where FolderPath has_any ("\\Notepad++\\", "\\notepad++\\")
-| where FolderPath has_any ("\\AppData\\", "\\Temp\\")
-    or ProcessCommandLine has_any ("-F", "/S", "/quiet", "silent", "upload")
-| project
-    DeviceId,
-    DeviceName,
-    UpdateTime = Timestamp,
-    UpdaterFile = FileName,
-    UpdaterPath = FolderPath,
-    UpdaterCmd = ProcessCommandLine,
-    UpdaterPID = ProcessId,
-    AccountName;
-// Recon + loader activity
-let PostUpdateExecution =
-DeviceProcessEvents
-| where Timestamp > ago(Lookback)
-| where InitiatingProcessFileName in~ ("update.exe", "gup.exe")
-| where FileName in~ (
-    "cmd.exe",
-    "powershell.exe",
-    "pwsh.exe",
-    "rundll32.exe",
-    "mshta.exe",
-    "curl.exe"
-)
-| where ProcessCommandLine has_any (
-    "whoami",
-    "tasklist",
-    "systeminfo",
-    "netstat",
-    "ipconfig",
-    "http",
-    "curl"
-    ) and ProcessCommandLine has_any ("-F", "-s", ">", ">>", ".txt")  // redirection staging
-| project
-    DeviceId,
-    ChildTime = Timestamp,
-    ChildProcess = FileName,
-    ChildCmd = ProcessCommandLine,
-    ChildPath = FolderPath,
-    ParentProcess = InitiatingProcessFileName;
-// Optional DLL sideload
-let SuspiciousImageLoad =
-DeviceImageLoadEvents
-| where Timestamp > ago(Lookback)
-| where FolderPath has_any ("\\AppData\\", "\\Temp\\")
-| where FileName in~ ("log.dll") or InitiatingProcessFileName =~ "BluetoothService.exe"  // Optional tighter on known abused binary, Remove for broader hunt
-| project
-    DeviceId,
-    ImageLoadTime = Timestamp,
-    LoadedModule = FileName,
-    ModulePath = FolderPath,
-    LoaderProcess = InitiatingProcessFileName;
+// Notepad++ Supply Chain Attack Detection
+let Lookback = 90d;
+// Updater Execution
+let SuspiciousUpdaterExecution = 
+    DeviceProcessEvents
+    | where Timestamp > ago(Lookback)
+    | where InitiatingProcessFileName in~ ("update.exe", "gup.exe")
+    | where FileName in~ (
+        "cmd.exe",
+        "powershell.exe", 
+        "pwsh.exe",
+        "rundll32.exe",
+        "mshta.exe", 
+        "curl.exe",
+        "wget.exe",
+        "certutil.exe"
+    )
+    | where ProcessCommandLine has_any (
+        "whoami", "tasklist", "systeminfo", "netstat", "ipconfig",
+        "http", "curl", "wget", "certutil", "bitsadmin", 
+        "download", "upload",
+        "Invoke-Expression", "IEX", "iex", "FromBase64String", "Base64"
+    )
+    and ProcessCommandLine has_any (">", ">>", ".txt", ".log", "-s", "-F")
+    | project
+        DeviceId,
+        DeviceName,
+        UpdateTime = Timestamp,
+        UpdaterFile = FileName,
+        UpdaterPath = FolderPath,
+        UpdaterCommand = ProcessCommandLine,
+        UpdaterPID = ProcessId,
+        AccountName;
+// Post-Update activity
+let PostUpdateActivity = 
+    DeviceProcessEvents
+    | where Timestamp > ago(Lookback)
+    | where InitiatingProcessFileName in~ ("update.exe", "gup.exe")
+    | where FileName in~ (
+        "cmd.exe",
+        "powershell.exe",
+        "pwsh.exe", 
+        "rundll32.exe",
+        "mshta.exe",
+        "curl.exe"
+    )
+    | where ProcessCommandLine has_any (
+        "whoami",
+        "tasklist", 
+        "systeminfo",
+        "netstat",
+        "ipconfig",
+        "http",
+        "curl"
+    )
+    and ProcessCommandLine has_any ("-F", "-s", ">", ">>", ".txt")
+    | project
+        DeviceId,
+        ActivityTime = Timestamp,
+        ProcessName = FileName,
+        CommandLine = ProcessCommandLine,
+        ProcessPath = FolderPath,
+        ParentProcess = InitiatingProcessFileName,
+        ProcessPID = ProcessId;
+// Dll Sideloading
+let SuspiciousDLLLoads = 
+    DeviceImageLoadEvents
+    | where Timestamp > ago(Lookback) 
+    | where FolderPath has_any ("\\AppData\\", "\\Temp\\")
+    // Optional: Known malicious DLLs or suspicious loaders
+    | where FileName in~ (
+        "log.dll", 
+        "alien.dll", 
+        "lua5.1.dll", 
+        "alien.ini"
+    ) 
+    or InitiatingProcessFileName in~ (
+        "BluetoothService.exe", 
+        "script.exe"
+    )
+    | project
+        DeviceId,
+        LoadTime = Timestamp,
+        LoadedModule = FileName,
+        ModulePath = FolderPath,
+        LoadingProcess = InitiatingProcessFileName;
+// Network Activity
+let SuspiciousNetworkConnections = 
+    DeviceNetworkEvents
+    | where Timestamp > ago(Lookback)
+    | where InitiatingProcessFileName in~ (
+        "cmd.exe",
+        "powershell.exe",
+        "pwsh.exe",
+        "curl.exe", 
+        "rundll32.exe",
+        "mshta.exe"
+    )
+    | project
+        DeviceId,
+        ConnectionTime = Timestamp,
+        NetworkProcess = InitiatingProcessFileName,
+        RemoteUrl,
+        RemoteIP,
+        RemotePort;
 // Correlation
-UpdaterExecution
-| join kind=inner PostUpdateExecution on DeviceId
-| where ChildTime between (UpdateTime .. (UpdateTime + time(10m)))
-| join kind=leftouter SuspiciousImageLoad on DeviceId
-| where
-    (ChildProcess in~ ("cmd.exe","powershell.exe","pwsh.exe") and isnotempty(ChildCmd))
-    or isnotempty(LoadedModule)
+SuspiciousUpdaterExecution
+| join kind=inner PostUpdateActivity on DeviceId
+    | where ActivityTime between (UpdateTime .. (UpdateTime + time(10m)))
+| join kind=leftouter SuspiciousDLLLoads on DeviceId
+    | where isnull(LoadTime) or LoadTime between (UpdateTime .. (UpdateTime + time(10m)))
+| join kind=leftouter SuspiciousNetworkConnections on DeviceId
+    | where isnull(ConnectionTime) or ConnectionTime between (UpdateTime .. (UpdateTime + time(10m)))
 | project
     Timestamp = UpdateTime,
     DeviceName,
     AccountName,
-    UpdaterFile,
-    UpdaterPath,
-    UpdaterCmd,
-    ChildProcess,
-    ChildCmd,
+    UpdaterProcess = UpdaterFile,
+    UpdaterPath, 
+    UpdaterCommand,
+    ChildProcess = ProcessName,
+    ChildCommand = CommandLine,
     LoadedModule,
-    ModulePath
-
+    ModulePath,
+    RemoteUrl,
+    RemoteIP,
+    RemotePort
 | order by Timestamp desc
