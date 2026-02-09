@@ -18,7 +18,7 @@ Most queries include:
 - Brief comments for use-case
 - Tunable parameters (time windows, thresholds, exclusions)
 
-
+Free to use/modify/share (attribution appreciated).
 - Made with ❤️ by [Awais Munir](https://www.linkedin.com/in/iawais/)
 
 Questions? Open an issue or reach out on LinkedIn.
