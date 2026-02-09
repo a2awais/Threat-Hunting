@@ -1,5 +1,4 @@
 # Threat-Hunting | Detection Engineering  
-CrowdStrike CQL + Microsoft Defender KQL
 
 Collection of **threat hunting** and **detection queries** for:
 - **CrowdStrike Falcon** (using CQL – CrowdStrike Query Language)
