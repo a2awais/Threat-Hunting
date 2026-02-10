@@ -1,15 +1,13 @@
 // References: https://mrd0x.com/filefix-clickfix-alternative/
-
 let suspiciousRegistry = DeviceRegistryEvents
 | where RegistryKey has "RunMRU"
 | where RegistryValueData has_any ("powershell", "curl", "Invoke-WebRequest", "IEX")
 | project DeviceName, RegistryValueData, RegistryTimestamp = Timestamp;
-
 DeviceProcessEvents
 | where FileName in ("cmd.exe", "powershell.exe", "pwsh.exe", "mshta.exe")
 | where ProcessCommandLine has_any ("Invoke-WebRequest", "curl", "DownloadFile", "IEX", "Net.WebClient", "DownloadString")
 | where InitiatingProcessFileName in~ ("explorer.exe", "iexplore.exe", "chrome.exe", "msedge.exe", "brave.exe", "opera.exe", "cmd.exe")
-| project DeviceName, ProcessCommandLine, ProcessTimestamp = Timestamp
-
+| project DeviceName, InitiatingProcessFileName, ProcessCommandLine, ProcessTimestamp = Timestamp
 | join kind=inner (suspiciousRegistry) on DeviceName
 | where ProcessTimestamp > RegistryTimestamp
+| project DeviceName, InitiatingProcessFileName, ProcessCommandLine
