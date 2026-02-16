@@ -1,0 +1,13 @@
+DeviceProcessEvents
+| where Timestamp > ago(7d)
+| where ProcessCommandLine has " -c "
+| where ProcessCommandLine has "import requests"
+| where ProcessCommandLine has "exec("
+| where ProcessCommandLine has_any ("requests.get","urllib","http://","https://")
+| project Timestamp,
+          DeviceName,
+          AccountName,
+          FileName,
+          ProcessCommandLine,
+          InitiatingProcessFileName
+| order by Timestamp desc
