@@ -15,4 +15,5 @@ DeviceProcessEvents
           ProcessCommandLine,
           InitiatingProcessFileName,
           InitiatingProcessCommandLine
+
 | order by Timestamp desc
