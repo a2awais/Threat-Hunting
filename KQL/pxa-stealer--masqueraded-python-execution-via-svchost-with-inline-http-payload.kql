@@ -1,0 +1,18 @@
+DeviceProcessEvents
+| where Timestamp > ago(7d)
+| where FileName =~ "svchost.exe"
+| where FolderPath has @"\Users\"
+| where ProcessCommandLine has " -c "
+| where ProcessCommandLine has_all ("import", "requests")
+| where ProcessCommandLine has "exec("
+| where ProcessCommandLine has_any ("http://", "https://")
+| where ProcessVersionInfoOriginalFileName in~ ("python.exe", "pythonw.exe")
+| project Timestamp,
+          DeviceName,
+          AccountName,
+          FileName,
+          FolderPath,
+          ProcessCommandLine,
+          InitiatingProcessFileName,
+          InitiatingProcessCommandLine
+| order by Timestamp desc
