@@ -88,7 +88,14 @@ jiofmdifioeejeilfkpegipdjiopiekl,
 hihblcmlaaademjlakdpicchbjnnnkbo,
 lbneaaedflankmgmfbmaplggbmjjmbae,
 eaijffijbobmnonfhilihbejadplhddo,
-hmiaoahjllhfgebflooeeefeiafpkfde
+hmiaoahjllhfgebflooeeefeiafpkfde,
+
+// Threat Intel: https://www.koi.ai/blog/vk-styles-500k-users-infected-by-chrome-extensions-that-hijack-vkontakte-accounts
+"ceibjdigmfbbgcpkkdpmjokkokklodmc",
+"mflibpdjoodmoppignjhciadahapkoch",
+"lgakkahjfibfgmacigibnhcgepajgfdb",
+"bndkfmmbidllaiccmpnbdonijmicaafn",
+"pcdgkgbadeggbnodegejccjffnoakcoh"
 ])
 
 | groupBy([ComputerName, UserName, BrowserExtensionId, BrowserProfileName, BrowserExtensionName, BrowserExtensionRequestedPermissions, BrowserFilePath])
