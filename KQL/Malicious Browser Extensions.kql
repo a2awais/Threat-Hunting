@@ -89,7 +89,20 @@ let ChromeExtensionSupplyChainAttack  = dynamic([
 "eaijffijbobmnonfhilihbejadplhddo",
 "hmiaoahjllhfgebflooeeefeiafpkfde"
 ]);
+// Threat Intel: https://www.koi.ai/blog/vk-styles-500k-users-infected-by-chrome-extensions-that-hijack-vkontakte-accounts
+let HijackVKontakteAccounts = dynamic([
+"ceibjdigmfbbgcpkkdpmjokkokklodmc",
+"mflibpdjoodmoppignjhciadahapkoch",
+"lgakkahjfibfgmacigibnhcgepajgfdb",
+"bndkfmmbidllaiccmpnbdonijmicaafn",
+"pcdgkgbadeggbnodegejccjffnoakcoh"
+]);
 DeviceTvmBrowserExtensions
-| where ExtensionId has_any (UrbanVpnEextension) or ExtensionId has_any (LegitimateExtensionsTurnedMalicious) or ExtensionId has_any (MaliciousBrowserExtensions)
-or ExtensionId has_any (ChromeExtensionSupplyChainAttack) or ExtensionId has_any (StealAIconversations)
+| where
+ExtensionId has_any (UrbanVpnEextension) or 
+ExtensionId has_any (LegitimateExtensionsTurnedMalicious) or 
+ExtensionId has_any (MaliciousBrowserExtensions) or
+ExtensionId has_any (ChromeExtensionSupplyChainAttack) or 
+ExtensionId has_any (StealAIconversations) or
+ExtensionId has_any (HijackVKontakteAccounts)
 | project BrowserName, ExtensionName, ExtensionDescription, ExtensionRisk, ExtensionVendor, IsActivated
