@@ -1,0 +1,8 @@
+// GRIDTIDE achieves persistence by creating /etc/systemd/system/xapt.service and launching from /usr/sbin/xapt.
+// Hunts for any newly created .service files in systemd paths by non-standard processes - directly matching the persistence path.
+#event_simpleName = /^(WriteProcessMemory|PeFileWritten|SyntheticProcessRollup2)$/
+| TargetFileName = /\/etc\/systemd\/system\/[a-z0-9]{1,10}\.service$/i
+| groupBy([ComputerName, UserName, TargetFileName, ImageFileName, CommandLine],
+    function=([count(aid, as=EventCount), min(@timestamp, as=FirstSeen), max(@timestamp, as=LastSeen)]))
+| FirstSeen := formatTime("%Y-%m-%d %H:%M:%S", field=FirstSeen)
+| sort(FirstSeen, order=desc)
