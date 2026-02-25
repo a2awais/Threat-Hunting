@@ -1,0 +1,9 @@
+// hunts for the specific post-exploitation recon pattern: a non-standard parent binary executing id or whoami via a shell wrapper.
+#event_simpleName = ProcessRollup2
+| FileName = /^(id|whoami)$/i
+| ParentBaseFileName != /bash|sh|zsh|sshd|sudo|cron|systemd/i
+| CommandLine = /sh\s+-c\s+(id|whoami)/i
+| groupBy([ComputerName, UserName, ParentBaseFileName, CommandLine, SHA256HashData],
+    function=([count(aid, as=EventCount), min(@timestamp, as=FirstSeen), max(@timestamp, as=LastSeen)]))
+| FirstSeen := formatTime("%Y-%m-%d %H:%M:%S", field=FirstSeen)
+| sort(LastSeen, order=desc)
