@@ -1,5 +1,6 @@
 // Matches the observed GRIDTIDE initial execution pattern:
 // a short alphanumeric binary dropped in /var/tmp/ (confirmed as xapt) spawning a shell and running id along with nohup persistence launcher.
+
 #event_simpleName = ProcessRollup2
 | ImageFileName = /\/var\/tmp\/[a-z0-9]{1,10}$/i
 | CommandLine = /sh\s+-c\s+id|nohup\s+\.\/[a-z0-9]{1,10}|sh\s+-c\s+id\s+2>&1/i
