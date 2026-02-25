@@ -1,0 +1,16 @@
+// Detects process execution where the image path or command line references SoftEther components.
+
+#event_simpleName = ProcessRollup2
+| ImageFileName = /(?i)hamcore|vpn_bridge|softether|vpnclient|vpnbridge/
+| CommandLine = /(?i)hamcore\.se2|vpn_bridge\.config|vmlog|fire\b/
+| groupBy(
+    [ComputerName, UserName, ImageFileName, CommandLine, ParentBaseFileName, SHA256HashData],
+    function=[
+        count(aid, as=EventCount),
+        min(@timestamp, as=FirstSeen),
+        max(@timestamp, as=LastSeen)
+    ]
+  )
+| FirstSeen := formatTime("%Y-%m-%d %H:%M:%S", field=FirstSeen, locale=en_US, timezone=UTC)
+| LastSeen  := formatTime("%Y-%m-%d %H:%M:%S", field=LastSeen, locale=en_US, timezone=UTC)
+| sort(LastSeen, order=desc)
