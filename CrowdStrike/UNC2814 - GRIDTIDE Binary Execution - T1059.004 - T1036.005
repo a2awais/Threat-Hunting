@@ -4,14 +4,4 @@
 #event_simpleName = ProcessRollup2
 | ImageFileName = /(?i)\/var\/tmp\/[a-z0-9]{1,10}$/
 | CommandLine = /(?i)sh\s+-c\s+id|nohup\s+\.\/[a-z0-9]{1,10}|sh\s+-c\s+id\s+2>&1/
-| groupBy(
-    [ComputerName, UserName, ImageFileName, CommandLine, ParentBaseFileName],
-    function=[
-        count(aid, as=EventCount),
-        min(@timestamp, as=FirstSeen),
-        max(@timestamp, as=LastSeen)
-    ]
-  )
-| FirstSeen := formatTime("%Y-%m-%d %H:%M:%S", field=FirstSeen, locale=en_US, timezone=UTC)
-| LastSeen  := formatTime("%Y-%m-%d %H:%M:%S", field=LastSeen, locale=en_US, timezone=UTC)
-| sort(LastSeen, order=desc)
+| groupBy([ComputerName, UserName, ImageFileName, CommandLine, ParentBaseFileName])
