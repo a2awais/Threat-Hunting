@@ -1,0 +1,7 @@
+// This query hunts for processes decoding or executing URL-safe Base64 blobs on the command line - a behavioural signal of GRIDTIDE-style command execution.
+#event_simpleName = ProcessRollup2
+| CommandLine = /base64\s+--?d|echo\s+[A-Za-z0-9\-_]{20,}[=]{0,2}\s*\|/i
+| CommandLine = /[-_]{2,}[A-Za-z0-9]{10,}|[A-Za-z0-9]{10,}[-_]{2,}/
+| groupBy([ComputerName, UserName, ImageFileName, CommandLine, ParentBaseFileName],
+    function=([count(aid, as=EventCount), min(@timestamp, as=FirstSeen), max(@timestamp, as=LastSeen)]))
+| sort(EventCount, order=desc)
