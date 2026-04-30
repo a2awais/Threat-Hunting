@@ -9,20 +9,19 @@
 OR "impacket" OR "ntds.dit" OR "ntdsutil" OR "Get-ADReplAccount"
 
 // STAGE 2: Event source filter
-
+   
 | (#event_simpleName = "ProcessRollup2"
    OR #event_simpleName = "SyntheticProcessRollup2")
 
 // STAGE 3: Field-level refinement
-
+   
 | (CommandLine = /(?i)(lsadump::dcsync|drsuapi|secretsdump|ntds\.dit|ntdsutil|mimikatz|mimilib|sekurlsa|impacket|Get-ADReplAccount)/
    OR ImageFileName = /(?i)(secretsdump|impacket)/)
 
-
 // STAGE 4: Tier assignment
-
+   
 | case {
-
+   
     // T1 — Direct protocol or module keyword
     CommandLine = /(?i)(lsadump::dcsync|drsuapi)/
       | Tier := "T1 — Direct DCSync/DRSUAPI";
@@ -42,7 +41,6 @@ OR "impacket" OR "ntds.dit" OR "ntdsutil" OR "Get-ADReplAccount"
   }
 
 //  STAGE 5: Binary name extraction 
-
 | regex("(?i)(?:.*\\\\)?(?<BinaryName>[^\\\\]+\\.(?:exe|py|dll|ps1))$",
         field=ImageFileName, strict=false)
 
