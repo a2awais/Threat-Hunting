@@ -39,10 +39,9 @@
     UserName,
     FileName,
     ParentBaseFileName,
-    ContextBaseFileName,
     CommandLine,
     RegObjectName,
     RegStringValue,
-    RegOperationType,
-    RegValueName
+    RegValueName,
+    RegOperationType    
 ], limit=100000)
