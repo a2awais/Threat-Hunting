@@ -3,6 +3,12 @@
 | "#event_simpleName" = InstalledBrowserExtension
 | in(BrowserExtensionId, values=[
 
+// https://www.island.io/blog/badblocker-11-million-users-one-server-call-away-from-compromise
+cmedhionkhpnakcndndgjdbohmhepckk, // Adblock for Youtube™ v7.2.2
+onomjaelhagjjojbkcafidnepbfkpnee, // Adblock for Chrome v3.3.3
+ogcaehilgakehloljjmajoempaflmdci, // Adblock for You v3.0.3
+gekoepiplklhniacchbbgbhilidiojmb, // AdBlock Suite v1.3.1
+
 // https://socket.dev/blog/108-chrome-ext-linked-to-data-exfil-session-theft-shared-c2
 obifanppcpchlehkjipahhphbcbjekfa, // Telegram Multi-account
 mdcfennpfgkngnibjbpnpaafcjnhcjno, // Web Client for Telegram, // Teleside
