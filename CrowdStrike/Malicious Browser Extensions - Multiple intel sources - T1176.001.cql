@@ -133,6 +133,128 @@
 "gcogpdjkkamgkakkjgeefgpcheonclca", // (Urban Ad Blocker)
 "deopfbighgnpgfmhjeccdifdmhcjckoe", // (1ClickVPN Proxy for Edge)
 
+// Threat Intel: https://microsoftedge.github.io/edgevr/assets/files/stego_ad/Microsoft_Edge_Security_StegoAd.pdf
+"adnahjjfjjemdiefpobclponnhkijnmo", // Google Hangouts
+"aekfeebhjlmielppjlhebapokdkelion", // Axure RP Viewer
+"afakckepbbffmnoghgpfnnebijeahjcb", // Adblock for Youtube
+"ajbkmeegjnmaggkhmibgckapjkohajim", // Cool Cursor
+"ajnjfpjimckjhfcpkaldennpdjglmeml", // Unblock Youku
+"aljmdjbcbkanlhnmcdjbefaomgbekhno", // Color by Number
+"amemnenomfejhfmfiheekmbcigfkolel", // Undo Closed Tabs
+"amfboegfahhedgehddflgcfbdaapllfj", // iVideo Downloader
+"aooacabidfijofopjaeligonlfobjcjb", // Adblock
+"badiigfpcpfckbhmpmkhokagppaadkim", // SpeakIt!
+"beemogkfhphmjghmkghdaggidgohohee", // AI Search GPT for Edge
+"bemebcpaekkmffjjbdakpipemmmlgchb", // iYouTubeToMP4
+"bmmchpeggdipgcobjbkcjiifgjdaodng", // Color Enhancer
+"bpdanoaacmebjgfjdmekfcfgmnaoekim", // Free Online Video Downloader
+"bpjnmlookdfciblphehedlcbpmignahe", // Turbo Download Manager
+"cbopgngpbfeoecnbebghbbhmdadmllce", // 鼠标手势 (Mouse Gestures) 
+"celdediiemogjpfcjocdbildilkccepl", // TikTok APP for Edge
+"cfilkckedhoniijcpjfgihelgepflpni", // Youtube To MP4 Downloader
+"cgjomicbgmoadggnjbdiafpjlodmafkp", // To QRcode
+"cjjcndlebdepeddfopnhpifmbfecocfh", // Best YouTube Adblocker
+"dbhdfkiddhdhmcikjdgblfjbenjfjlfh", // Simple mass downloader
+"dbhgpbaaedlknnnochmkjfacnfnakkfa", // Custom New Tab for Edge
+"dcelinkcepeidliddjhapgjokheoldjb", // Auto Skip Ads on YouTube
+"dckihkcdmjmlkndgmmgplpcnkmdpangb", // Adblock
+"dgmpkflgbcbpjgniahjegbpelmofbgnn", // Adblock Master
+"dhnibdhcanplpdkcljgmfhbipehkgdkk", // Youtube Download
+"dokiamnhbobapjfhhhcjlfplabeofamp", // Summary with ChatGPT
+"eblienbdkbgiigaebhmljbedkafiobkj", // Webpage Screenshot for Edge
+"edohfgmjmdnibeihfcajfclmhapjkooa", // New Tab - Customized Dashboard
+"egbkgelnkodaldbpkgjmhcekjakkcpnk", // Live Start Page
+"eindenipbnkpeofhpjjimphfchmjoohe", // Speed Control for Youtube
+"eklcgjodcnhhcghpbhehhbnmjncbopcg", // Best Speedtest Tool
+"elecjoakfjcmjoppfconlfgfemjcaoea", // AliExpress Helper
+"elljfaejhdaplocgcejlhfemgimbmcdp", // Evernote in Pinned Tab
+"eopjamlpanhfkcbnoeofcnmdfdiogfgl", // Natural Reader Text to Speech
+"fbobegkkdmmcnmoplkgdmfhdlkjfelnb", // Ads Block Ultimate
+"fcoongackakfdmiincikmjgkedcgjkdp", // Google Translate in Right Click
+"fdjpommjpahieenehallhicdhponhacm", // G.B.B.D Translator
+"ffedaeoanbhgmanhhecfjodpopcjnhkc", // ZLibrary Searcher
+"fgbfcndckldbjifhjgijpjmnpekkelkb", // HLS Stream Downloader
+"fhhinoefbjlmhakpjohnpabdobgmphli", // Similar Sites for Edge
+"fhkijdlfjnpimenfpnegkecbbijmoipm", // Save Button for Pinterest
+"fkkoeecbjckjpnmenebojblcljjgbpoj", // Adblocker FX
+"flcgalphjnojjefjnnimnejbkkefbjgo", // TikTok Downloader Without Watermark
+"fljmegmgjebjdionedkjfgffikhnmcgg", // Spell & Grammar Check Tool
+"flmkfmdmcaepdaoedepihfkhmgopiago", // YouTube™ Adblock Plus 
+"fmchencccolmmgjmaahfhpglemdcjfll", // Translate Selected Text with Right Click
+"gclhifbbggfamoojmienffegbmmfnfll", // Adblock for Youtube
+"gggjlnkbmgmjboipaegjmjmehmcekamo", // GIPHY for Edge
+"glgbgppjjkldoifgpbhbpbkbcdjpgpfj", // Save Pinterest on Right Click
+"gmaoimcaoimgmomockloieoifjocpkmf", // Piggy - Automatic Coupons
+"gmciomcaholgmklbfangdjkneihfkddd", // RSS Feed
+"gnbnbmnldhfoplgjojhepikgjanaplle", // Image Downloader Pro
+"hcmfdagipflbaagmcnhnhabkmjkopcke", // UseChatGPT.AI
+"hecicojipmfmablnbhknedademofbbpk", // Weather Forecast
+"hffpfdhdjpbnaddaidajedimmpckekkl", // Language Reactor
+"higdalghhdbfffdjdiaenminajlmmldb", // Downloader for Instagram
+"hlkenllnegiplhjhpobgangolfkjcgab", // iQiyi Adblock
+"hmjdegfgppjddmmojloflajkelegnjdp", // Youtube Adblock Online
+"hnggnhinapdcjocbciajaffnofecfale", // Download All Images
+"hninibdhkeepfndhcdknlijeapngbgdp", // Adblock Master
+"hnleilhpfbdofpdnnpjggafhncienakg", // Batch Image Downloader
+"iaehhmhmdidpkfmddiodkloefndpggcj", // AI Weather Forecast
+"ibfjnghdeenopfkpbmnkablkfejnlnif", // Batch Image Downloader
+"ibjjllhemkfgfbkgohldepcdgiigpdkb", // Mouse Tooltip Translator
+"ielbkcjohpgmjhoiadncabphkglejgih", // Convert Everything
+"ijgobfhjjipoljjcejmafocdnfnloflm", // Edge Web Highlighter
+"ikfdcmchafnmklcndfegdlefcfoaggni", // Imageye
+"imcbcfmohachfahkbgijokokjpfmoogb", // CrxMouse Gestures
+"imiheoejheaebigkjaeilfmekiikjdbd", // Adblocker Plus for YouTubeâ„¢
+"inelenlaldjofeekhjinpjkacjokagke", // Social Book Post Manager
+"jbmkcmhocoddcokjkahpcchanlmiffhg", // Download Button for YouTube
+"jebcdimkcimkafekgbgbhookdajcoeib", // #Best# PDF Saver
+"jecnjeedhbokmpckobjbgieglfjcomek", // Enhance YouTubeâ„¢
+"jgngkchljnldpnjimaboboomjmpfpoie", // AI Search with ChatGPT
+"jgphopeamnghlcekffldkpnbhmiadnbc", // Video Downloader Premium
+"jhahljcmjemimhchigiaigklabnpodgo", // TikMate
+"jihipmfmicjjpbpmoceapfjmigmemfam", // One Key Translate
+"jjdfciihihcpgfgmoonfpgglbgclpfai", // Translate Officer
+"jnakfjmfmjmfpmdnghedafdphdanbjkh", // Adblock Master for Youtube
+"johcbgkljdbebbloakcollpmigpigkpd", // Twitch Custom Emotes - FrankerFaceZ
+"kakgeonhimhojdncehlopejkfaapboeo", // Pinterest Save Button
+"kemjiblbeciejjlgobbkffbpnceieefh", // Picture-in-Picture Playing
+"kikacehfccglblphddbifmiaeiglfdfi", // Adblock For Edge
+"klmfgbnlbfgpdenpdddpdfigmnkmchil", // Trusted VPN for Edge - Free VeePN
+"kmiahfbflcnmlobepelpgkmolhodmiek", // Adblock (ÂµBlock clone)
+"lfdoadipcejhmpcpfkgkdionjlnfempa", // Twitter Bulk Download
+"lkmeakjjodlkhbikbpdoeicfodaklkna", // Super Dark Mode for Edge
+"lplondnihmdhjokafldkcfnjclkhigpm", // Transkriptor
+"mebgpfbaibhepnkljpimlijicgkbangk", // Marinara: PomodoroÂ® Assistant
+"mimmainmmkddahakleojidjaimaofndp", // AdSkip-çˆ±å¥‡è‰º
+"mjofmhcbolkekhebpccldlbdamnfjefc", // Google search link fix
+"mlgefgipndlgdfjfgnjfheigkagjieea", // Save as PDF
+"ncbpkjcnklnbnkjpcamhhoedlkljeolo", // IG Downloader for Edge
+"nepdfkaidpemglngbgpnmmhnleiekpin", // 一键翻译 
+"ngeoikidkjbegoifbnmfimacmbilfcgi", // Image Downloader - Batch Download
+"nhfohdhgahjpmniccbgflilignkcnmai", // AdFly Skipper for Edge
+"nhjdhmbdahdidccpobobccagmmijndmp", // Gmail Checker
+"nipggfgilmoiofmnkbeabghbcaohmjih", // Adblock for Youtubeâ„¢
+"nphphgkcccnlmdiihcedabnhfacfmojk", // U-Tube Downloader
+"obocpangfamkffjllmcfnieeoacoheda", // Translate Selected Text with Google
+"oejbpnadmkdiofacgknaaagbmmonhgpb", // Efficient Adblocker for Youtube
+"oiolhdeinoaidggfcpebifcbedppbgog", // Video & MP3 Downloader
+"okmfpehbgckbneedidbladdaiekikcdo", // ssYoutube - Video Downloader
+"onlofoccaenllpjmalbnilfacjmcfhfk", // AdBlocker
+"pjhoiegecdlpaohfffpajaldpbilngog", // Magic Actions for YouTube
+"pohfogacehhgefhgmcmnojflfakllkal", // CrxMouse - Super Drag
+"akfklmfpgmkkhiiolnfbhalkeccjnmeb", // Hiddence VPN
+"bbofakpgfmlfjpjcahodgpbddocpibge", // ImTranslator
+"cgoigjefilgfmcjnnendlpdaonlfoncf", // Return YouTube Dislike
+"engcfdjknekakgpjkhdobneidcpfbfgm", // Night Mode
+"mdjeohcdegpfoppocljbccpognjlkjke", // ColorZilla
+"nfincgjfplibcdcncfkeehldffppnlnp", // YouTube Transcript to Text
+"nmhdjlflloeeahacgomilnhmpfnhlpkn", // 7TV
+"pdnjhppcgkdbjolbeplcabkcfmpnbjmh", // VPN
+"pgcamkdibinodcpkhenjmofbfobpebpn", // Night Mode
+"nlapjaaepfeadiecaipnacimidfjginj", // Focus To-Do: Pomodoro Timer & To Do List
+"olcibgopfmndlnghnmogcgdhdffdbicg", // Screen Shader | Dark Mode
+"fifeankddgioinbcchlokclbcgjlopjj", // Similar Sites - Discover Related Websites
+"maiackahflfnegibhinjhpbgeoldeklb", // ...Page Screenshot Clipper
+
 // Threat Intel: https://www.infosecurity-magazine.com/news/18-malicious-chrome-edge-extensions/
 "Kgmeffmlnkfnjpgmdndccklfigfhajen",
 "Dpdibkjjgbaadnnjhkmmnenkmbnhpobj",
