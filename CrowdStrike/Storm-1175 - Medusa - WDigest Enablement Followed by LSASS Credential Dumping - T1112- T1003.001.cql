@@ -1,6 +1,5 @@
 // T1112: Modify Registry — Enabling WDigest via registry change.
 // T1003.001: OS Credential Dumping: LSASS Memory — Primary technique.
-// T1555.003: Credentials from Password Stores: Windows Credential Manager.
 // T1556.004: Modify Authentication Process: Network Provider.
 
 // Storm-1175 - Medusa - WDigest Enablement Followed by LSASS Credential Dumping
