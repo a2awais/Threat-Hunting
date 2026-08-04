@@ -1,5 +1,5 @@
 // Mirage Kitten NightLedge - Screenshot Capture from Hijacked DLL Execution Context
-// Rationale:   Detects NightLedger Command 36 (screenshot capture) by anchoring
+// Rationale:   Detects NightLedger Command (screenshot capture) by anchoring
 //              the ScreenshotTaken event to the implant's known execution
 //              context rather than relying on a blocklist of legitimate tools.
 //              NightLedger executes inside a DLL side-loaded by AppVShNotify.exe
@@ -18,7 +18,7 @@ DeviceEvents
 | where Timestamp > ago(30d)
 | where ActionType == "ScreenshotTaken"
 | where (
-    // Arm 1: Screenshot from a process running in a known NightLedger staging path
+    // Screenshot from a process running in a known NightLedger staging path
     InitiatingProcessFolderPath has_any (
         @"\AppData\Local\Microsoft\VisualStudio",
         @"\AppData\Local\Temp",
@@ -27,7 +27,7 @@ DeviceEvents
         @"\Users\Public"
     )
     or
-    // Arm 2: Screenshot from LOLBin/DLL-loader class process (hijack execution chain)
+    // Screenshot from LOLBin/DLL-loader class process (hijack execution chain)
     InitiatingProcessFileName in~ (
         "rundll32.exe",
         "regsvr32.exe",
