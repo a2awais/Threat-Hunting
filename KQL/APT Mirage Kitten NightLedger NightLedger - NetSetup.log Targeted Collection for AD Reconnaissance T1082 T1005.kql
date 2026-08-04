@@ -1,6 +1,6 @@
 // ----------------------------------------------------------------------------
-// TITLE:       Mirage Kitten NightLedger NightLedger — NetSetup.log Targeted Collection for AD Reconnaissance
-// DESCRIPTION: Detects NightLedger Command 93, which collects
+// Mirage Kitten NightLedger NightLedger — NetSetup.log Targeted Collection for AD Reconnaissance
+// Rationale:   Detects NightLedger Command 93, which collects
 //              C:\Windows\debug\NetSetup.log alongside a process listing and
 //              exfiltrates both to C2. Since DeviceFileEvents does not surface
 //              read-class ActionTypes, this query hunts the collection behavior
