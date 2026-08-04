@@ -1,4 +1,4 @@
-// Mirage Kitten NightLedge — Screenshot Capture from Hijacked DLL Execution Context
+// Mirage Kitten NightLedge - Screenshot Capture from Hijacked DLL Execution Context
 // Rationale:   Detects NightLedger Command 36 (screenshot capture) by anchoring
 //              the ScreenshotTaken event to the implant's known execution
 //              context rather than relying on a blocklist of legitimate tools.
