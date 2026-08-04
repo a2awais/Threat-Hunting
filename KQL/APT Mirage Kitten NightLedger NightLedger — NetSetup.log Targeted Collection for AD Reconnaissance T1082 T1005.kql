@@ -1,0 +1,44 @@
+// ----------------------------------------------------------------------------
+// TITLE:       Mirage Kitten NightLedger NightLedger — NetSetup.log Targeted Collection for AD Reconnaissance
+// DESCRIPTION: Detects NightLedger Command 93, which collects
+//              C:\Windows\debug\NetSetup.log alongside a process listing and
+//              exfiltrates both to C2. Since DeviceFileEvents does not surface
+//              read-class ActionTypes, this query hunts the collection behavior
+//              in DeviceProcessEvents: shell commands (type, more, cmd /c)
+//              referencing the NetSetup.log path, spawned from the DLL-loader
+//              process class consistent with NightLedger's execution chain.
+//              NetSetup.log contains domain name, DC hostnames, and join
+//              timestamps — high-value AD recon for an espionage actor.
+// MITRE ATT&CK: T1082 — System Information Discovery
+//               T1005 — Data from Local System
+// SEVERITY:    High
+// ----------------------------------------------------------------------------
+
+DeviceProcessEvents
+| where Timestamp > ago(30d)
+| where ProcessCommandLine has_all ("NetSetup.log", @"C:\Windows\debug")
+    or ProcessCommandLine has_any (
+        @"Windows\debug\NetSetup",
+        "NetSetup.log"
+    )
+| where ProcessCommandLine has_any (
+    "type ", "more ", "cmd ", "powershell", "findstr", "copy "
+)
+| where InitiatingProcessFileName in~ (
+    "rundll32.exe",
+    "regsvr32.exe",
+    "AppVShNotify.exe",
+    "dllhost.exe",
+    "cmd.exe",
+    "powershell.exe"
+)
+| project
+    Timestamp,
+    DeviceName,
+    FileName,
+    ProcessCommandLine,
+    InitiatingProcessFileName,
+    InitiatingProcessFolderPath,
+    InitiatingProcessCommandLine,
+    InitiatingProcessAccountName
+| sort by Timestamp asc
