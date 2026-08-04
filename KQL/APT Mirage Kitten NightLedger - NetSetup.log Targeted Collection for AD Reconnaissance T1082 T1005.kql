@@ -2,8 +2,7 @@
 // Mirage Kitten NightLedger NightLedger — NetSetup.log Targeted Collection for AD Reconnaissance
 // Rationale:   Detects NightLedger Command 93, which collects
 //              C:\Windows\debug\NetSetup.log alongside a process listing and
-//              exfiltrates both to C2. Since DeviceFileEvents does not surface
-//              read-class ActionTypes, this query hunts the collection behavior
+//              exfiltrates both to C2. This query hunts the collection behavior
 //              in DeviceProcessEvents: shell commands (type, more, cmd /c)
 //              referencing the NetSetup.log path, spawned from the DLL-loader
 //              process class consistent with NightLedger's execution chain.
