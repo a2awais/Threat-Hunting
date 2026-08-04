@@ -1,7 +1,7 @@
 // =============================================================================
 // Ref: https://securelist.com/mirage-kitten-new-tools/120811/
 // Mirage Kitten NightLedger Backdoor: DLL Search-Order Hijack (SspiCli.dll via AppVShNotify.exe)
-// Rationale: Detects NightLedger's delivery mechanism: the implant is
+// Rationale:   Detects NightLedger's delivery mechanism: the implant is
 //              compiled as a malicious SspiCli.dll and co-located with
 //              AppVShNotify.exe (a legitimate Microsoft App-V binary).
 //              AppVShNotify.exe imports RPCRT4.dll, which delay-loads
