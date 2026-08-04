@@ -1,0 +1,40 @@
+// ----------------------------------------------------------------------------
+// Mirage Kitten NightLedger — Logical Drive Enumeration Spawned from DLL-Load Context
+// Rationale:   Detects NightLedger Command 75, which enumerates logical drives
+//              as a pre-exfiltration reconnaissance step — identifying available
+//              storage volumes before staging and uploading data via Command 70
+//              (POST to C2). The query hunts for drive enumeration commands
+//              (WMIC, fsutil, PowerShell variants) spawned specifically from
+//              the DLL-loader process class associated with NightLedger's
+//              execution chain. Drive enumeration from rundll32, regsvr32,
+//              AppVShNotify.exe, or dllhost has no legitimate use case and
+//              is high-confidence in this parent-process context.
+// MITRE ATT&CK: T1083 — File and Directory Discovery
+//               T1082 — System Information Discovery
+// SEVERITY:    Medium — treat as high if parent process is AppVShNotify.exe
+// ----------------------------------------------------------------------------
+
+DeviceProcessEvents
+| where Timestamp > ago(7d)
+| where ProcessCommandLine has_any (
+    "wmic logicaldisk",
+    "fsutil fsinfo drives",
+    "Get-PSDrive",
+    "[System.IO.DriveInfo]"
+)
+| where InitiatingProcessFileName in~ (
+    "rundll32.exe",
+    "regsvr32.exe",
+    "AppVShNotify.exe",
+    "dllhost.exe"
+)
+| project
+    Timestamp,
+    DeviceName,
+    FileName,
+    ProcessCommandLine,
+    InitiatingProcessFileName,
+    InitiatingProcessFolderPath,
+    InitiatingProcessCommandLine,
+    AccountName
+| sort by Timestamp asc
