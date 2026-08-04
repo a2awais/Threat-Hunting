@@ -1,0 +1,36 @@
+// =============================================================================
+NightLedger: DLL Search-Order Hijack (SspiCli.dll via AppVShNotify.exe)
+// Severity: CRITICAL
+// MITRE: T1574.001 — DLL Search Order Hijacking
+// Rationale: NightLedger masquerades as SspiCli.dll and is co-located with
+//            AppVShNotify.exe to exploit its indirect SspiCli.dll load via
+//            RPCRT4.dll delay-load. Any load of SspiCli.dll by AppVShNotify.exe
+//            from outside canonical Windows paths is a binary-confidence indicator.
+// Ref: https://securelist.com/mirage-kitten-new-tools/120811/
+// =============================================================================
+
+DeviceImageLoadEvents
+| where Timestamp > ago(30d)
+| where FileName =~ "SspiCli.dll"
+| where InitiatingProcessFileName =~ "AppVShNotify.exe"
+| where not(FolderPath has_any (
+    @"C:\Windows\System32",
+    @"C:\Windows\SysWOW64",
+    @"C:\Windows\WinSxS",
+    @"C:\Windows\assembly",
+    @"C:\Windows\Microsoft.NET",
+    @"C:\Program Files",
+    @"C:\Program Files (x86)"
+))
+| project
+    Timestamp,
+    DeviceName,
+    FileName,
+    FolderPath,
+    SHA256,
+    MD5,
+    InitiatingProcessFileName,
+    InitiatingProcessFolderPath,
+    InitiatingProcessCommandLine,
+    InitiatingProcessAccountName
+| sort by Timestamp asc
