@@ -1,0 +1,52 @@
+// Mirage Kitten NightLedge — Screenshot Capture from Hijacked DLL Execution Context
+// Rationale:   Detects NightLedger Command 36 (screenshot capture) by anchoring
+//              the ScreenshotTaken event to the implant's known execution
+//              context rather than relying on a blocklist of legitimate tools.
+//              NightLedger executes inside a DLL side-loaded by AppVShNotify.exe
+//              or related LOLBin processes, and stages under user-writable paths
+//              consistent with the group's known deployment locations
+//              (LocalAppData\Microsoft\VisualStudio, univpn\promote, etc.).
+//              The compound condition — screenshot event AND suspicious initiating
+//              process path or LOLBin loader — produces high-confidence detections
+//              with minimal enterprise noise.
+// MITRE ATT&CK: T1113 — Screen Capture
+// SEVERITY:    Medium — escalate immediately if correlated with Query 1 hit
+//              on the same device.
+// ----------------------------------------------------------------------------
+
+DeviceEvents
+| where Timestamp > ago(30d)
+| where ActionType == "ScreenshotTaken"
+| where (
+    // Arm 1: Screenshot from a process running in a known NightLedger staging path
+    InitiatingProcessFolderPath has_any (
+        @"\AppData\Local\Microsoft\VisualStudio",
+        @"\AppData\Local\Temp",
+        @"\AppData\Roaming",
+        @"univpn\promote",
+        @"\Users\Public"
+    )
+    or
+    // Arm 2: Screenshot from LOLBin/DLL-loader class process (hijack execution chain)
+    InitiatingProcessFileName in~ (
+        "rundll32.exe",
+        "regsvr32.exe",
+        "AppVShNotify.exe",
+        "dllhost.exe",
+        "msiexec.exe"
+    )
+)
+// Exclude expected screen-capture tools in your environment
+| where InitiatingProcessFileName !in~ (
+    "Teams.exe", "Zoom.exe", "mstsc.exe", "snippingtool.exe",
+    "ScreenSketch.exe"
+)
+| project
+    Timestamp,
+    DeviceName,
+    ActionType,
+    InitiatingProcessFileName,
+    InitiatingProcessFolderPath,
+    InitiatingProcessCommandLine,
+    InitiatingProcessAccountName
+| sort by Timestamp asc
