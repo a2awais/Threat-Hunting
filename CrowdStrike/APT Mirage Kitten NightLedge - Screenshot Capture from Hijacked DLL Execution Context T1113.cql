@@ -1,0 +1,21 @@
+// Mirage Kitten NightLedge - Screenshot Capture from Hijacked DLL Execution Context
+// Rationale:   Detects NightLedger Command (screenshot capture) by anchoring
+//              the ScreenshotTaken event to the implant's known execution
+//              context rather than relying on a blocklist of legitimate tools.
+//              NightLedger executes inside a DLL side-loaded by AppVShNotify.exe
+//              or related LOLBin processes, and stages under user-writable paths
+//              consistent with the group's known deployment locations
+//              (LocalAppData\Microsoft\VisualStudio, univpn\promote, etc.).
+//              The compound condition — screenshot event AND suspicious initiating
+//              process path or LOLBin loader — produces high-confidence detections
+//              with minimal enterprise noise.
+// MITRE ATT&CK: T1113 — Screen Capture
+// SEVERITY:    Medium — escalate immediately if correlated with Query 1 hit
+//              on the same device.
+// ----------------------------------------------------------------------------
+// Union: screenshot telemetry OR the GDI/User32 module-load proxy
+(#event_simpleName=ScreenshotTakenEtw) OR (#event_simpleName=ClassifiedModuleLoad FileName=/(gdi32(full)?\.dll|user32\.dll)/i)
+| ProcessKey := coalesce([ContextProcessId, TargetProcessId])
+| selfJoinFilter(field=[aid, ProcessKey], where=[{#event_simpleName=ProcessRollup2 FileName=/appvshnotify\.exe/i}])
+| table([aid, ComputerName, #event_simpleName, FileName, FilePath, ProcessKey, @timestamp])
+| sort(field=@timestamp, order=asc)
