@@ -11,7 +11,7 @@
             "NetworkConnectIP6"
         ])
         // Outbound connections only
-        | ConnectionDirection=1
+        | ConnectionDirection=0
         // Exclude RFC1918 private IP ranges
         | NOT (
             RemoteIP="10.*"
