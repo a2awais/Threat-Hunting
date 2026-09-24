@@ -1,9 +1,7 @@
 // Mass File Modification Burst - Encryption/Wipe Pattern (Agrius - Moneybird/Apostle)
 // Rationale:   One process generating high-volume file writes spread broadly across
 //              many folders and extensions in a short window - the behavioral shape
-//              of an active encryptor or wiper. This maps directly to Agrius's
-//              documented Moneybird (AES-256-GCM encryptor targeting user shares,
-//              avoids executables) and Apostle. Events-per-path ratio
+//              of an active encryptor or wiper. Events-per-path ratio
 //              filters out narrow, repetitive touches (build tools, indexers).
 // MITRE ATT&CK: T1486 (primary) — Data Encrypted for Impact / T1485 — Data Destruction
 // SEVERITY:    High — escalate immediately if correlated with a Recovery Inhibition
