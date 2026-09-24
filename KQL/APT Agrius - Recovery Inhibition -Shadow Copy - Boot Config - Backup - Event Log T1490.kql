@@ -1,0 +1,30 @@
+// Recovery Inhibition - Shadow Copy / Boot Config / Backup / Event Log (Agrius)
+// Rationale:   Matches full command semantics rather than loose keywords, which
+//              false-positive on routine admin scripting. Shadow copy deletion and
+//              event log clearing align with Agrius's MultiLayer wiper, which
+//              removes shadow copies and the VSS service, then clears all Windows
+//              Event Logs via a scheduled task. Boot config and backup catalog
+//              tampering round out coverage for the same recovery-inhibition goal.
+// MITRE ATT&CK: T1490 (primary) — Inhibit System Recovery / T1070.001 — Clear Windows
+//               Event Logs (event-log branch)
+// SEVERITY:    High — near-zero expected volume on a healthy fleet.
+// ----------------------------------------------------------------------------
+let lookback = 1d;
+let ExcludeProcessPaths = dynamic([""]);
+let ExcludeSha1 = dynamic([""]);
+DeviceProcessEvents
+| where Timestamp >= ago(lookback)
+| where not(InitiatingProcessFolderPath has_any (ExcludeProcessPaths)) and not(SHA1 in (ExcludeSha1))
+| extend Signal = case(
+    ProcessCommandLine has_all ("vssadmin", "delete", "shadows"), "ShadowCopyDeletion",
+    ProcessCommandLine has_all ("bcdedit", "recoveryenabled"), "BootConfigTampering",
+    ProcessCommandLine has_all ("bcdedit", "bootstatuspolicy"), "BootConfigTampering",
+    ProcessCommandLine has "wbadmin" and ProcessCommandLine has "delete", "BackupCatalogDeletion",
+    ProcessCommandLine has "wevtutil" and ProcessCommandLine has "cl", "EventLogDestruction",
+    ProcessCommandLine has "fsutil" and ProcessCommandLine has "usn", "UsnJournalDeletion",
+    "")
+| where Signal != ""
+| project Timestamp, DeviceName, Signal, Process = FileName, CommandLine = ProcessCommandLine,
+          ParentProcess = InitiatingProcessFileName, ParentCommandLine = InitiatingProcessCommandLine,
+          Account = AccountName, FolderPath, Sha1 = SHA1
+| order by Timestamp asc
