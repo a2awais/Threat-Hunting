@@ -1,0 +1,34 @@
+// Mass File Modification Burst - Encryption/Wipe Pattern (Agrius - Moneybird/Apostle)
+// Rationale:   One process generating high-volume file writes spread broadly across
+//              many folders and extensions in a short window - the behavioral shape
+//              of an active encryptor or wiper. This maps directly to Agrius's
+//              documented Moneybird (AES-256-GCM encryptor targeting user shares,
+//              avoids executables) and Apostle. Events-per-path ratio
+//              filters out narrow, repetitive touches (build tools, indexers).
+// MITRE ATT&CK: T1486 (primary) — Data Encrypted for Impact / T1485 — Data Destruction
+// SEVERITY:    High — escalate immediately if correlated with a Recovery Inhibition
+//              or Ransom Note hit on the same device within ~2 hours.
+// ----------------------------------------------------------------------------
+let lookback = 1d;
+let ExcludeProcessPaths = dynamic([""]);
+let ExcludeSha1 = dynamic([""]);
+DeviceFileEvents
+| where Timestamp >= ago(lookback)
+| where ActionType in ("FileRenamed", "FileModified", "FileDeleted")
+| where not(InitiatingProcessFolderPath has_any (ExcludeProcessPaths)) and not(InitiatingProcessSHA1 in (ExcludeSha1))
+| summarize FileEvents = count(), DistinctPaths = dcount(FolderPath),
+            DistinctExt = dcount(extract(@"\.([^.\\]+)$", 1, FileName)),
+            SamplePath = take_any(FolderPath),
+            CmdLine = take_any(InitiatingProcessCommandLine),
+            ParentProcess = take_any(InitiatingProcessParentFileName),
+            Account = take_any(InitiatingProcessAccountName),
+            ProcPath = take_any(InitiatingProcessFolderPath),
+            Sha1 = take_any(InitiatingProcessSHA1)
+    by DeviceId, DeviceName, Process = InitiatingProcessFileName, Timestamp = bin(Timestamp, 10m)
+| where FileEvents >= 400 and DistinctPaths >= 50 and DistinctExt >= 5
+| where (FileEvents * 1.0 / DistinctPaths) < 5
+| join kind=leftouter (DeviceFileCertificateInfo | project Sha1 = SHA1, IsTrusted) on Sha1
+| where isnull(IsTrusted) or IsTrusted == false
+| project Timestamp, DeviceName, Process, ParentProcess, CommandLine = CmdLine, Account,
+          FolderPath = ProcPath, Sha1, FileEvents, DistinctPaths, DistinctExt, SamplePath
+| order by Timestamp asc
