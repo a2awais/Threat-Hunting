@@ -1,0 +1,25 @@
+// Ransom Note Deployed Across Multiple Locations
+// Rationale:   A single dropped readme is common installer noise; the same note
+//              replicated across five or more distinct folders is not.
+//              Content-independent detection - based on path and count, so it
+//              survives note wording changes.
+// MITRE ATT&CK: T1486 — Data Encrypted for Impact (supporting artifact)
+// SEVERITY:    High — escalate immediately if correlated with a Mass File
+//              Modification Burst hit on the same device.
+// ----------------------------------------------------------------------------
+let lookback = 1d;
+let ExcludeProcessPaths = dynamic([""]);
+let ExcludeSha1 = dynamic([""]);
+DeviceFileEvents
+| where Timestamp >= ago(lookback)
+| where ActionType == "FileCreated"
+| where FileName endswith ".txt" or FileName endswith ".hta" or FileName endswith ".html"
+| where FileName matches regex @"(?i)(recover[-_ ]?(your|my|files)|decrypt|how[-_ ]?to[-_ ]?(decrypt|restore|recover)|restore[-_ ]?files|ransom|unlock[-_ ]?files)"
+| where not(InitiatingProcessFolderPath has_any (ExcludeProcessPaths)) and not(InitiatingProcessSHA1 in (ExcludeSha1))
+| summarize NoteLocations = dcount(FolderPath), SamplePath = take_any(FolderPath), Timestamp = min(Timestamp),
+            CommandLine = take_any(InitiatingProcessCommandLine), Account = take_any(InitiatingProcessAccountName),
+            FolderPath = take_any(InitiatingProcessFolderPath), Sha1 = take_any(InitiatingProcessSHA1)
+    by DeviceId, DeviceName, FileName, Process = InitiatingProcessFileName
+| where NoteLocations >= 5
+| project Timestamp, DeviceName, Process, CommandLine, Account, FolderPath, Sha1, NoteName = FileName, NoteLocations, SamplePath
+| order by Timestamp asc
