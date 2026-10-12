@@ -10,6 +10,8 @@
 // MITRE ATT&CK: T1547.001 — Registry Run Keys / Startup Folder
 // SEVERITY:    Medium-High — investigate for associated Blinder Tunnel
 //              activity and C2 communications.
+// Ref:         https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/
+// Ref:         https://github.com/NextronSystems/iocs/tree/master/reports/A%20New%20Variant%20of%20Blinder%20Tunnel%20with%20Zero%20AV%20Detection
 // ----------------------------------------------------------------------------
 // Registry persistence via MicrosoftRuntime autorun value
 "#event_simpleName" = *Reg*
