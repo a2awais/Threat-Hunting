@@ -1,0 +1,45 @@
+// Blinder Tunnel - Implant Staging and Trusted-Host Sideload Kit Drop
+// Rationale:   Catches the kit before execution (dormant, quarantined, or blocked). Arm A anchors
+//              on campaign artifacts that have no legitimate Windows equivalent: the
+//              %LOCALAPPDATA%\Microsoft\RuntimeBrokers\ directory, RuntimeBroker.exe.config
+//              (the genuine broker has no config), and the encrypted stage-2 RuntimeBrokerApi.dll.
+//              Arm B is name-agnostic: a signed .NET host + .exe.config + DLL written within
+//              15 minutes under AppData\Local\Microsoft\ by a build host (the .csproj trigger) or an
+//              Inno Setup temp extractor (the Dubai Airports / StarkMeet / JPerf lures). Arm B
+//              survives renamed folders and files in future variants.
+// MITRE ATT&CK: T1574.014 - AppDomainManager
+//               T1574.002 - DLL Side-Loading
+//               T1127.001 - Trusted Developer Utilities: MSBuild
+//               T1036.005 - Masquerading
+// SEVERITY:    Medium - High. Arm A hit = High (implant files present); Arm B only = Medium, verify.
+// ----------------------------------------------------------------------------
+// Logic: FileCreated, anchored by campaign artifacts OR (kit writer AND Microsoft-lookalike dir),
+//        then require the exe+config+dll triple per directory per 15-minute bin unless Arm A.
+let TimeBin = 15m;
+DeviceFileEvents
+| where Timestamp > ago(7d)
+| where ActionType == "FileCreated"
+| extend CampaignAnchor = FolderPath has @"\AppData\Local\Microsoft\RuntimeBrokers\"
+    or FileName in~ ("RuntimeBroker.exe.config", "RuntimeBrokerApi.dll")
+| extend KitWriter = InitiatingProcessFileName in~ ("MSBuild.exe", "devenv.exe", "dotnet.exe")
+    or (InitiatingProcessFileName endswith ".tmp" and InitiatingProcessFolderPath has @"\Temp\is-")
+| where CampaignAnchor
+    or (KitWriter
+        and FolderPath has @"\AppData\Local\Microsoft\"
+        and FolderPath !has @"\Microsoft\VisualStudio\")
+| extend Kind = case(
+    FileName endswith ".exe.config", "config",
+    FileName endswith ".exe", "exe",
+    FileName endswith ".dll", "dll",
+    "other")
+// FolderPath normally includes the file name; handle both conventions
+| extend StageDir = tolower(iff(tolower(FolderPath) endswith tolower(FileName),
+    tostring(parse_path(FolderPath).DirectoryPath), FolderPath))
+| summarize CampaignHits = countif(CampaignAnchor), Kinds = make_set(Kind), Files = make_set(FileName, 25),
+    SHA1s = make_set(SHA1, 25), Writers = make_set(InitiatingProcessFileName, 5), FirstSeen = min(Timestamp)
+    by DeviceId, DeviceName, StageDir, InitiatingProcessAccountName, TimeBin = bin(Timestamp, TimeBin)
+| where CampaignHits > 0
+    or (set_has_element(Kinds, "exe") and set_has_element(Kinds, "config") and set_has_element(Kinds, "dll"))
+| project FirstSeen, DeviceName, DeviceId, StageDir, ArmA_CampaignArtifact = CampaignHits > 0,
+    Files, Writers, SHA1s, InitiatingProcessAccountName
+| order by FirstSeen desc
