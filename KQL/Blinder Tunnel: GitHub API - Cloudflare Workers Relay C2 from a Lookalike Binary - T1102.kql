@@ -1,0 +1,36 @@
+// Blinder Tunnel - GitHub Contents-API C2 Loop and Workers Relay from a Lookalike Binary
+// Rationale:   The loader beacons every 63s to the GitHub Contents API (profile PUT, license GET)
+//              and, in the Nextron variant, via a Cloudflare Workers relay that mirrors the GitHub
+//              API paths (g-prx.itugegape524.workers.dev). Both are legitimate platforms, so the
+//              signal is the client: the implant install dir, a non-System32 RuntimeBroker.exe,
+//              or any binary under AppData\Local\Microsoft\ (never a GitHub client). Hosts that
+//              are implant by identity alert on one hit; the lookalike-path arm needs >= 10
+//              connections per hour (a 63s loop produces 100+), which suppresses incidental noise.
+// MITRE ATT&CK: T1102    - Web Service
+//               T1102.001 - Dead Drop Resolver (issue-search credential rotation on 401/404)
+//               T1071.001 - Web Protocols
+//               T1036.005 - Masquerading
+// SEVERITY:    High when ImplantHost or KnownRelay; Medium for the lookalike-path arm.
+// ----------------------------------------------------------------------------
+// Logic: GitHub API or workers.dev egress AND (known relay OR implant identity OR lookalike path >= 10/hr).
+// Note:  Relies on RemoteUrl being populated for TLS; confirm on a short window first.
+let KnownRelayHost = "itugegape524.workers.dev";
+DeviceNetworkEvents
+| where Timestamp > ago(7d)
+| where ActionType == "ConnectionSuccess"
+| where RemoteUrl has "api.github.com" or RemoteUrl has "workers.dev"
+| extend KnownRelay = RemoteUrl has KnownRelayHost
+| extend ImplantHost =
+    InitiatingProcessFolderPath has @"\AppData\Local\Microsoft\RuntimeBrokers\"
+    or (InitiatingProcessFileName =~ "RuntimeBroker.exe" and not(InitiatingProcessFolderPath startswith @"C:\Windows\System32\"))
+    or InitiatingProcessFileName =~ "Microsoft.Http.Api.exe"
+| extend LookalikePath =
+    InitiatingProcessFolderPath has @"\AppData\Local\Microsoft\"
+    and InitiatingProcessFolderPath !has @"\Microsoft\VisualStudio\"
+| where KnownRelay or ImplantHost or LookalikePath
+| summarize Connections = count(), Targets = make_set(RemoteUrl, 5), RemoteIPs = make_set(RemoteIP, 5),
+    FirstSeen = min(Timestamp), LastSeen = max(Timestamp)
+    by DeviceId, DeviceName, InitiatingProcessFileName, InitiatingProcessFolderPath,
+       InitiatingProcessSHA1, InitiatingProcessAccountName, KnownRelay, ImplantHost, Hour = bin(Timestamp, 1h)
+| where KnownRelay or ImplantHost or Connections >= 10
+| order by FirstSeen desc
