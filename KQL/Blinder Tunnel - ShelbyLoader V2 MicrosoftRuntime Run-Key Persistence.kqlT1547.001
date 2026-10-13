@@ -1,0 +1,22 @@
+// Blinder Tunnel - ShelbyLoader V2 "MicrosoftRuntime" Run-Key Persistence
+// Rationale:   ShelbyLoader V2 (RuntimeBroker.dll, Unit 42 and Nextron variants) re-asserts
+//              HKCU\...\Run\MicrosoftRuntime on a 120s then hourly timer, pointing at a quoted
+//              %LOCALAPPDATA%\Microsoft\RuntimeBrokers\RuntimeBroker.exe. The genuine RuntimeBroker.exe
+//              is a System32 COM broker that is never autostarted from a Run key, so either the
+//              implant's value name or the binary name in Run data is a near-binary signal that
+//              needs no allow-list.
+// MITRE ATT&CK: T1547.001 - Registry Run Keys / Startup Folder
+//               T1036.005 - Masquerading: Match Legitimate Name or Location
+// SEVERITY:    High - confirmed implant persistence.
+// ----------------------------------------------------------------------------
+// Logic: Run-key write where value name == MicrosoftRuntime OR data names RuntimeBroker.exe.
+DeviceRegistryEvents
+| where Timestamp > ago(7d)
+| where ActionType == "RegistryValueSet"
+| where RegistryKey has @"\CurrentVersion\Run"
+| where RegistryValueName =~ "MicrosoftRuntime"
+    or RegistryValueData has "RuntimeBroker.exe"
+| project Timestamp, DeviceName, DeviceId, RegistryKey, RegistryValueName, RegistryValueData,
+    InitiatingProcessFileName, InitiatingProcessFolderPath, InitiatingProcessCommandLine,
+    InitiatingProcessSHA1, InitiatingProcessAccountName
+| order by Timestamp desc
