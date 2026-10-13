@@ -12,6 +12,7 @@
 //               T1127.001 - Trusted Developer Utilities: MSBuild
 //               T1036.005 - Masquerading
 // SEVERITY:    Medium - High. Arm A hit = High (implant files present); Arm B only = Medium, verify.
+// Ref:         https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/
 // ----------------------------------------------------------------------------
 // Logic: FileCreated, anchored by campaign artifacts OR (kit writer AND Microsoft-lookalike dir),
 //        then require the exe+config+dll triple per directory per 15-minute bin unless Arm A.
