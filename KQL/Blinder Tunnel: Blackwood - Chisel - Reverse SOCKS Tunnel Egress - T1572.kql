@@ -1,0 +1,29 @@
+// Blinder Tunnel - Blackwood (Chisel) Reverse SOCKS Tunnel Egress from Sideloaded vshost32.exe
+// Rationale:   Blackwood.dll is sideloaded into a signed vshost32.exe via vshost32.exe.config and
+//              reflectively loads Go-compiled Chisel, which dials a raw public IP and establishes a
+//              reverse SOCKS proxy (R:0.0.0.0:10999:socks) for lateral pivoting. A Visual Studio
+//              hosting binary running from a user-writable path has no reason to reach the internet,
+//              so the process arm needs no destination allow-list. The second arm sweeps the Unit 42
+//              tunnel/staging IPs from any process. KnownBlinderTunnelIP is a tag, not a score.
+// MITRE ATT&CK: T1572     - Protocol Tunneling
+//               T1090     - Proxy
+//               T1573.001 - Encrypted Channel: Symmetric Cryptography
+//               T1574.014 - AppDomainManager
+// SEVERITY:    High - interactive access / pivot point established; isolate and scope lateral movement.
+// Ref:         https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/
+// ----------------------------------------------------------------------------
+// Logic: public egress from (vshost*.exe in user-writable path) OR any connection to known tunnel IPs.
+// Note:  The IP arm decays as infrastructure rotates; refresh from new reporting.
+let BlinderTunnelIPs = pack_array("91.107.156.29", "65.109.214.145", "87.248.129.239", "38.180.136.127");
+let UserWritable = pack_array(@"\AppData\", @"\ProgramData\", @"\Users\Public\", @"\Windows\Temp\", @"\Downloads\");
+DeviceNetworkEvents
+| where Timestamp > ago(30d)
+| where ActionType == "ConnectionSuccess"
+| where RemoteIPType == "Public"
+| where (InitiatingProcessFileName in~ ("vshost32.exe", "vshost.exe") and InitiatingProcessFolderPath has_any (UserWritable))
+    or RemoteIP in (BlinderTunnelIPs)
+| extend KnownBlinderTunnelIP = RemoteIP in (BlinderTunnelIPs)
+| project Timestamp, DeviceName, DeviceId, RemoteIP, RemotePort, RemoteUrl, KnownBlinderTunnelIP,
+    InitiatingProcessFileName, InitiatingProcessFolderPath, InitiatingProcessCommandLine,
+    InitiatingProcessSHA1, InitiatingProcessParentFileName, InitiatingProcessAccountName
+| order by Timestamp desc
