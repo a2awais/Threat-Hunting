@@ -8,6 +8,7 @@
 // MITRE ATT&CK: T1547.001 - Registry Run Keys / Startup Folder
 //               T1036.005 - Masquerading: Match Legitimate Name or Location
 // SEVERITY:    High - confirmed implant persistence.
+// Ref:         https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/
 // ----------------------------------------------------------------------------
 // Logic: Run-key write where value name == MicrosoftRuntime OR data names RuntimeBroker.exe.
 DeviceRegistryEvents
