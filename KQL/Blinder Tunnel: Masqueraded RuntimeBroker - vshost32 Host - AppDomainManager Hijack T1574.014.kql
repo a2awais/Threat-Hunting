@@ -11,6 +11,7 @@
 //               T1036.005 - Masquerading: Match Legitimate Name or Location
 //               T1127.001 - Trusted Developer Utilities: MSBuild
 // SEVERITY:    High - escalate immediately
+// Ref:         https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/
 // ----------------------------------------------------------------------------
 // Logic: (RuntimeBroker.exe outside System32) OR (vshost*.exe in user-writable path)
 //        OR (any image in the implant install dir).
