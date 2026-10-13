@@ -11,6 +11,7 @@
 //               T1071.001 - Web Protocols
 //               T1036.005 - Masquerading
 // SEVERITY:    High when ImplantHost or KnownRelay; Medium for the lookalike-path arm.
+// Ref:         https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/
 // ----------------------------------------------------------------------------
 // Logic: GitHub API or workers.dev egress AND (known relay OR implant identity OR lookalike path >= 10/hr).
 // Note:  Relies on RemoteUrl being populated for TLS; confirm on a short window first.
