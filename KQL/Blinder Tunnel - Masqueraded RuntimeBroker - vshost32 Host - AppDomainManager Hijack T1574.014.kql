@@ -1,0 +1,33 @@
+// Blinder Tunnel - Masqueraded RuntimeBroker.exe / vshost32.exe Host (AppDomainManager Hijack)
+// Rationale:   The kit relies on a trusted, signed .NET host launched from a user-writable
+//              directory so an attacker-supplied <host>.exe.config can name the malicious
+//              AppDomainManager (RuntimeBroker.dll) and load it before any host code runs.
+//              The host is a renamed Visual Studio hosting binary (RuntimeBroker.exe) or
+//              vshost32.exe (Blackwood). Genuine RuntimeBroker.exe only runs from System32, and
+//              the \Microsoft\RuntimeBrokers\ folder does not exist on a clean Windows install,
+//              so the path arm also survives the actor renaming the host. LaunchContext
+//              separates first execution (build host / installer) from autostart (Explorer).
+// MITRE ATT&CK: T1574.014 - Hijack Execution Flow: AppDomainManager
+//               T1036.005 - Masquerading: Match Legitimate Name or Location
+//               T1127.001 - Trusted Developer Utilities: MSBuild
+// SEVERITY:    High - escalate immediately
+// ----------------------------------------------------------------------------
+// Logic: (RuntimeBroker.exe outside System32) OR (vshost*.exe in user-writable path)
+//        OR (any image in the implant install dir).
+let UserWritable = pack_array(@"\AppData\", @"\ProgramData\", @"\Users\Public\", @"\Windows\Temp\", @"\Downloads\");
+DeviceProcessEvents
+| where Timestamp > ago(7d)
+| where FileName in~ ("RuntimeBroker.exe", "vshost32.exe", "vshost.exe")
+    or FolderPath has @"\AppData\Local\Microsoft\RuntimeBrokers\"
+| where (FileName =~ "RuntimeBroker.exe" and not(FolderPath startswith @"C:\Windows\System32\"))
+    or (FileName in~ ("vshost32.exe", "vshost.exe") and FolderPath has_any (UserWritable))
+    or FolderPath has @"\AppData\Local\Microsoft\RuntimeBrokers\"
+| extend LaunchContext = case(
+    InitiatingProcessFileName in~ ("MSBuild.exe", "devenv.exe", "dotnet.exe"), "BuildHost (.csproj trigger)",
+    InitiatingProcessFileName endswith ".tmp" and InitiatingProcessFolderPath has @"\Temp\is-", "InnoSetup installer",
+    InitiatingProcessFileName =~ "explorer.exe", "Explorer (Run-key autostart or user launch)",
+    "Other")
+| project Timestamp, DeviceName, DeviceId, AccountName, FileName, FolderPath, SHA1, LaunchContext,
+    ProcessVersionInfoOriginalFileName, ProcessCommandLine,
+    InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessParentFileName
+| order by Timestamp desc
