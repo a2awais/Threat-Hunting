@@ -1,7 +1,27 @@
+// Windows Firewall Tampering via netsh or PowerShell (T1562.004)
 DeviceProcessEvents
-| where FileName in~ ("netsh.exe", "powershell.exe")
-| where ProcessCommandLine has_any ("New-NetFirewallRule", "Set-NetFirewallRule", "Remove-NetFirewallRule",
-"Set-NetFirewallProfile", "Set-NetFirewallProfile", "Disable-NetFirewallRule", "Enable-NetFirewallRule", "Delete rule name=")
-// Excluding the Noice - pay attention if its required for your hypothesis
-| where ProcessIntegrityLevel != @"System"
-| project DeviceName, AccountName, FileName, InitiatingProcessFileName, InitiatingProcessParentFileName, ProcessCommandLine, InitiatingProcessCommandLine
+| where Timestamp > ago(7d)
+| where FileName in~ ("netsh.exe", "powershell.exe", "pwsh.exe", "powershell_ise.exe")
+    or ProcessVersionInfoOriginalFileName in~ ("netsh.exe", "PowerShell.EXE", "pwsh.dll")    // catches renamed binaries
+// netsh firewall changes | PowerShell NetSecurity cmdlets
+| where (ProcessCommandLine has_any ("advfirewall", "firewall")
+        and ProcessCommandLine has_any ("add rule", "set rule", "delete rule", "set allprofiles",
+            "set currentprofile", "set domainprofile", "set privateprofile", "set publicprofile",
+            "portopening", "allowedprogram", "opmode"))
+    or ProcessCommandLine has_any ("New-NetFirewallRule", "Set-NetFirewallRule", "Remove-NetFirewallRule",
+            "Disable-NetFirewallRule", "Enable-NetFirewallRule", "Set-NetFirewallProfile",
+            "Set-NetFirewallSetting", "Copy-NetFirewallRule")
+// Optional noise reduction: uncomment once you have baselined your environment
+// | where ProcessIntegrityLevel !~ "System"
+// Labels what the command is doing
+| extend Action = case(
+    ProcessCommandLine has_any ("state off", "opmode disable")
+        or (ProcessCommandLine has "-Enabled" and ProcessCommandLine has "False"), "Firewall profile disabled",
+    ProcessCommandLine has_any ("add rule", "New-NetFirewallRule", "portopening", "allowedprogram"), "Rule created",
+    ProcessCommandLine has_any ("delete rule", "Remove-NetFirewallRule"), "Rule deleted",
+    ProcessCommandLine has "Disable-NetFirewallRule", "Rule disabled",
+    "Rule or profile modified")
+| project Timestamp, DeviceId, DeviceName, AccountDomain, AccountName, ProcessIntegrityLevel, Action,
+          FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine,
+          InitiatingProcessParentFileName, SHA256, ReportId
+| order by Timestamp desc
