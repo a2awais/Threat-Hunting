@@ -1,0 +1,46 @@
+// Enabled = act now. Disabled/Deleted = contained, but still audit for planted secrets and roles.
+// Disable vendor apps, don't delete (deleting removes the consent).
+let CWApps = dynamic([
+ "506e08f9-6e9a-4da4-942b-a099a03644ae", "2399d300-6fca-4e6a-a686-399fefe75b83",
+ "24205314-2b89-4e07-a2a4-579e898a5640", "b78f6a77-d4e5-46fb-87e5-d1648bd02519",
+ "0de14c77-b9b0-4137-9360-34878a929827", "412dcf96-176d-4b3a-a1b0-4981ad66971e",
+ "b2b55f5b-7758-4719-8d8f-88ae172e6bdb"
+]);
+let CWVendorTenant = "3f9cd7a0-127a-4ed4-bf06-2f830d5616b7"; // vendor tenant ID (Huntress IOC)
+let EscalationPerms = dynamic(["Application.ReadWrite.All","AppRoleAssignment.ReadWrite.All",
+ "RoleManagement.ReadWrite.Directory","Directory.ReadWrite.All"]);
+OAuthAppInfo
+| where Timestamp > ago(35d)
+| summarize arg_max(Timestamp, *) by OAuthAppId
+| extend OwnerTenant = column_ifexists("AppOwnerTenantId", ""),
+         SPId = column_ifexists("ServicePrincipalId", ""),
+         LastUsedAt = column_ifexists("LastUsedTime", datetime(null)),
+         LastChangedAt = column_ifexists("LastModifiedTime", Timestamp)
+| where OAuthAppId in (CWApps) or OwnerTenant == CWVendorTenant or AppName has_any ("SkyKick", "ConnectWise")
+| extend Permissions = iff(array_length(Permissions) > 0, Permissions, dynamic([{}]))
+| mv-expand Perm = Permissions
+| extend PermName = tostring(Perm.PermissionValue), PermType = tostring(Perm.PermissionType)
+| summarize
+    CanEscalateOrPlant = make_set_if(PermName, PermType == "Application" and PermName in~ (EscalationPerms)),
+    AppOnlyPermissions = make_set_if(PermName, PermType == "Application" and isnotempty(PermName)),
+    AppName = take_any(AppName), AppStatus = take_any(AppStatus), AppOrigin = take_any(AppOrigin),
+    OwnerTenant = take_any(OwnerTenant), SPId = take_any(SPId),
+    LastUsedAt = take_any(LastUsedAt), LastChangedAt = take_any(LastChangedAt)
+    by OAuthAppId
+| extend MatchedOn = case(
+    OAuthAppId in (CWApps), "ConnectWise app ID",
+    OwnerTenant == CWVendorTenant, "ConnectWise vendor tenant",
+    "Name match")
+| extend Action = case(
+    AppStatus == "Enabled", "ACT NOW: disable (do not delete), then audit credentials and roles",
+    AppStatus startswith "Disabled", "Contained: still verify no secrets or roles were planted",
+    AppStatus == "Deleted", "Deleted: consent gone, still audit credentials and roles on other apps",
+    "Review")
+| extend Rank = iff(AppStatus == "Enabled", 0, 1)
+| order by Rank asc, LastUsedAt desc
+| project AppName, AppStatus, Action, MatchedOn, AppOrigin,
+          CanEscalateOrPlant = array_strcat(array_sort_asc(CanEscalateOrPlant), "; "),
+          AppOnlyPermissions = array_strcat(array_sort_asc(AppOnlyPermissions), "; "),
+          LastUsed = format_datetime(LastUsedAt, "yyyy-MM-dd"),
+          LastChanged = format_datetime(LastChangedAt, "yyyy-MM-dd"),
+          OAuthAppId, SPId, OwnerTenant
