@@ -1,0 +1,22 @@
+// IOC IPs: Huntress and ConnectWise advisory 
+// https://www.huntress.com/blog/vendor-credential-enables-unauthorized-access
+// ServicePrincipal rows = apps signing in as themselves. User rows = people (password spray).
+let Lookback = 30d; // use 1d for a scheduled rule
+let AttackerIPs = dynamic(["144.172.64.128","144.172.64.99","144.172.64.60"]);
+union
+ (EntraIdSpnSignInEvents
+  | where Timestamp > ago(Lookback)
+  | where IPAddress in (AttackerIPs)
+  | project Timestamp, ReportId, SignInType = "ServicePrincipal", Application, ApplicationId,
+            Account = ServicePrincipalName, AccountId = ServicePrincipalId,
+            IPAddress, UserAgent, ResourceDisplayName, ErrorCode, Country),
+ (EntraIdSignInEvents
+  | where Timestamp > ago(Lookback)
+  | where IPAddress in (AttackerIPs)
+  | project Timestamp, ReportId, SignInType = "User", Application, ApplicationId,
+            Account = AccountUpn, AccountId = AccountObjectId,
+            IPAddress, UserAgent, ResourceDisplayName, ErrorCode, Country)
+| extend Outcome = iff(ErrorCode == 0, "Success", "Failed"),
+         Rank = iff(ErrorCode == 0, 0, 1)
+| order by Rank asc, Timestamp desc
+| project-away Rank
