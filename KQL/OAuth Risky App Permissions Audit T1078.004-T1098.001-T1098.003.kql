@@ -1,49 +1,28 @@
-// =============================================================================
-// OAuth App Hygiene Audit: over-privileged enterprise apps (Microsoft Defender XDR)
-// Table:   OAuthAppInfo (needs Defender for Cloud Apps app governance turned on)
-// Purpose: list enabled apps that hold permissions an attacker would want, so
-//          they can be reviewed and cleaned up. Relevant to OAuth persistence and
-//          vendor/supply-chain app abuse (e.g. Midnight Blizzard, ConnectWise/SkyKick).
-// MITRE:   T1078.004, T1098.001, T1098.003
+// Risky OAuth App Permissions: App-Only and Delegated
+// Which enabled apps could an attacker use to read mail, plant credentials or
+// escalate privileges, and does anyone still need them?
 //
-// What "app-only" means: the app signs in as itself (secret/certificate), with no
-// user and no MFA, and can act tenant-wide.
-// "Delegated" means it acts as a signed-in // user and is limited to what that user can do.
+// App-only = the app signs in as itself: no user, no MFA, tenant-wide reach.
+// Delegated = the app acts as a user and can't exceed that user's rights.
 //
-// How to read the results (top to bottom = review priority):
-//   PrivEsc_AppOnly    app-only rights that can add credentials, assign roles or
-//                      change policy. Highest risk.
-//   DataAccess_AppOnly app-only mail / file / site access.
-//   DelegatedHigh_...  high-privilege user-consented rights on an EXTERNAL app with
-//                      NO verified publisher (typical consent-phishing shape).
-//   "(in use)"         the app actually exercises that permission.
-//   Activity           Inactive 90d+ apps are the easiest to disable.
+// Review top to bottom: PrivEsc_AppOnly, then DataAccess_AppOnly.
+// "(in use)" = the permission is actually exercised. Inactive 90d+ = easiest to disable.
+// Verified publisher does not mean safe (see ConnectWise/SkyKick).
 //
-// IDs: OAuthAppId is the app's global ID (same in every tenant). ServicePrincipalId
-// is the app's object ID in THIS tenant: use it to find the app in Entra Enterprise
-// applications and to join audit events. AppOwnerTenantId is the tenant that
-// registered the app. If it is not your own tenant ID, the app is vendor-owned.
-//
-// Tuning: edit the two lists below to fit your environment. Set OnlyRisky = false
-// to list every enabled app.
-//
-// Notes: a verified publisher does NOT mean safe. Vendor apps can be compromised,
-// as in the ConnectWise case. This query shows what an app can do. It does not
-// show changes: pair it with audit-log hunting for role and credential changes.
-// Some columns may be missing in your tenant, so they are wrapped in column_ifexists.
-// =============================================================================
+// Seen in the wild: Midnight Blizzard (2024), ConnectWise/SkyKick (2026)
+// Related (not covered here): Vercel/Context.ai (Google Workspace), OneDrive File Picker scope flaw (Oasis)
+// MITRE: T1078.004, T1098.001, T1098.003 | Requires: app governance in Defender for Cloud Apps
+// Tune: edit the two lists below. OnlyRisky = false lists every enabled app.
 let OnlyRisky = true;
-// App-only rights that let an app escalate privilege or plant credentials
 let PrivEsc = dynamic(["Application.ReadWrite.All","AppRoleAssignment.ReadWrite.All",
  "RoleManagement.ReadWrite.Directory","Directory.ReadWrite.All",
  "Policy.ReadWrite.ConditionalAccess","UserAuthenticationMethod.ReadWrite.All"]);
-// Rights that give broad access to mail, files and sites
 let DataAccess = dynamic(["Mail.Send","Mail.ReadWrite","MailboxSettings.ReadWrite",
  "Files.ReadWrite.All","Sites.ReadWrite.All","Sites.FullControl.All","AllSites.Write",
  "full_access_as_app","EWS.AccessAsUser.All"]);
 OAuthAppInfo
-| where Timestamp > ago(15d)
-| summarize arg_max(Timestamp, *) by OAuthAppId
+| where Timestamp > ago(35d)                       // full snapshots land twice a month
+| summarize arg_max(Timestamp, *) by OAuthAppId    // latest state per app
 | where AppStatus == "Enabled"
 | extend LastModified = column_ifexists("LastModifiedTime", Timestamp),
          AddedOn = column_ifexists("AddedOnTime", datetime(null)),
@@ -56,7 +35,7 @@ OAuthAppInfo
 | extend Permissions = iff(array_length(Permissions) > 0, Permissions, dynamic([{}]))
 | mv-expand Perm = Permissions
 | extend Name = tostring(Perm.PermissionValue),
-         Type = tostring(Perm.PermissionType),
+         Type = tostring(Perm.PermissionType),     // Application or Delegated
          Level = tostring(Perm.PrivilegeLevel),
          InUse = tostring(Perm.InUse),
          Resource = tostring(Perm.TargetAppDisplayName)
@@ -71,7 +50,7 @@ OAuthAppInfo
     AdminConsented = take_any(AdminConsented), AddedOn = take_any(AddedOn),
     LastModified = take_any(LastModified), LastUsed = take_any(LastUsed)
     by OAuthAppId
-// Delegated rights only matter when the app is external AND unverified
+// Delegated rights only count for external apps with no verified publisher
 | extend DelegatedHigh_ExternalUnverified =
     iff(isempty(Publisher) and AppOrigin =~ "External", DelegatedHigh, dynamic([]))
 | extend ReviewReason = case(
