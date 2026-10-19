@@ -1,37 +1,95 @@
+// =============================================================================
+// OAuth App Hygiene Audit: over-privileged enterprise apps (Microsoft Defender XDR)
+// Table:   OAuthAppInfo (needs Defender for Cloud Apps app governance turned on)
+// Purpose: list enabled apps that hold permissions an attacker would want, so
+//          they can be reviewed and cleaned up. Relevant to OAuth persistence and
+//          vendor/supply-chain app abuse (e.g. Midnight Blizzard, ConnectWise/SkyKick).
+// MITRE:   T1078.004, T1098.001, T1098.003
+//
+// What "app-only" means: the app signs in as itself (secret/certificate), with no
+// user and no MFA, and can act tenant-wide.
+// "Delegated" means it acts as a signed-in // user and is limited to what that user can do.
+//
+// How to read the results (top to bottom = review priority):
+//   PrivEsc_AppOnly    app-only rights that can add credentials, assign roles or
+//                      change policy. Highest risk.
+//   DataAccess_AppOnly app-only mail / file / site access.
+//   DelegatedHigh_...  high-privilege user-consented rights on an EXTERNAL app with
+//                      NO verified publisher (typical consent-phishing shape).
+//   "(in use)"         the app actually exercises that permission.
+//   Activity           Inactive 90d+ apps are the easiest to disable.
+//
+// IDs: OAuthAppId is the app's global ID (same in every tenant). ServicePrincipalId
+// is the app's object ID in THIS tenant: use it to find the app in Entra Enterprise
+// applications and to join audit events. AppOwnerTenantId is the tenant that
+// registered the app. If it is not your own tenant ID, the app is vendor-owned.
+//
+// Tuning: edit the two lists below to fit your environment. Set OnlyRisky = false
+// to list every enabled app.
+//
+// Notes: a verified publisher does NOT mean safe. Vendor apps can be compromised,
+// as in the ConnectWise case. This query shows what an app can do. It does not
+// show changes: pair it with audit-log hunting for role and credential changes.
+// Some columns may be missing in your tenant, so they are wrapped in column_ifexists.
+// =============================================================================
+let OnlyRisky = true;
+// App-only rights that let an app escalate privilege or plant credentials
+let PrivEsc = dynamic(["Application.ReadWrite.All","AppRoleAssignment.ReadWrite.All",
+ "RoleManagement.ReadWrite.Directory","Directory.ReadWrite.All",
+ "Policy.ReadWrite.ConditionalAccess","UserAuthenticationMethod.ReadWrite.All"]);
+// Rights that give broad access to mail, files and sites
+let DataAccess = dynamic(["Mail.Send","Mail.ReadWrite","MailboxSettings.ReadWrite",
+ "Files.ReadWrite.All","Sites.ReadWrite.All","Sites.FullControl.All","AllSites.Write",
+ "full_access_as_app","EWS.AccessAsUser.All"]);
 OAuthAppInfo
+| where Timestamp > ago(15d)
+| summarize arg_max(Timestamp, *) by OAuthAppId
 | where AppStatus == "Enabled"
-| summarize arg_max(Timestamp, *) by OAuthAppId // Get latest state of each app based on its unique ID
-| mv-expand Permissions to typeof(dynamic) // 'Permissions' is now the dynamic object for each permission entry
-| extend
-    PermissionValue = tostring(Permissions.PermissionValue), // Directly access properties from 'Permissions'
-    Resource = tostring(Permissions.TargetAppDisplayName)   // Directly access properties from 'Permissions'
+| extend LastModified = column_ifexists("LastModifiedTime", Timestamp),
+         AddedOn = column_ifexists("AddedOnTime", datetime(null)),
+         LastUsed = column_ifexists("LastUsedTime", datetime(null)),
+         AdminConsented = column_ifexists("IsAdminConsented", bool(null)),
+         ServicePrincipalId = column_ifexists("ServicePrincipalId", ""),
+         AppOwnerTenantId = column_ifexists("AppOwnerTenantId", ""),
+         VP = parse_json(tostring(VerifiedPublisher))
+| extend Publisher = coalesce(tostring(VP.displayName), tostring(VP.DisplayName))
+| extend Permissions = iff(array_length(Permissions) > 0, Permissions, dynamic([{}]))
+| mv-expand Perm = Permissions
+| extend Name = tostring(Perm.PermissionValue),
+         Type = tostring(Perm.PermissionType),
+         Level = tostring(Perm.PrivilegeLevel),
+         InUse = tostring(Perm.InUse),
+         Resource = tostring(Perm.TargetAppDisplayName)
+| extend Label = strcat(Name, iff(InUse == "true", " (in use)", ""))
 | summarize
-    AllPermissions = make_set(strcat(Resource, ":", PermissionValue)),
-    RiskyPermissions = make_set_if(PermissionValue,
-        Resource == "Microsoft Graph" and
-        PermissionValue has_any(
-            'MyFiles.Write',
-            'Files.ReadWrite.All',
-            'Sites.ReadWrite.All',
-            'AllSites.Write',
-            'Mail.Send',
-            'MailboxSettings.ReadWrite',
-            'User.ReadWrite.All'
-        )
-    ),
-    LastModified = max(Timestamp),
-    AppOrigin = take_any(AppOrigin),
-    // Ensure VerifiedPublisher is handled as a string for consistency
-    VerifiedPublisher = take_any(tostring(VerifiedPublisher))
-    by AppName, OAuthAppId // This 'by' clause ensures unique AppName/OAuthAppId combinations in the final output
-| extend HasRiskyPermissions = iff(array_length(RiskyPermissions) > 0, true, false)
-| project
-    AppName,
-    OAuthAppId,
-    VerifiedPublisher,
-    AppOrigin,
-    LastModified,
-    HasRiskyPermissions,
-    RiskyPermissions,
-    AllPermissions
-| order by HasRiskyPermissions desc, LastModified desc
+    PrivEsc_AppOnly = make_set_if(Label, Type == "Application" and Name in~ (PrivEsc)),
+    DataAccess_AppOnly = make_set_if(Label, Type == "Application" and Name in~ (DataAccess)),
+    DelegatedHigh = make_set_if(Label, Type == "Delegated" and Level == "High"),
+    AllPerms = make_set_if(strcat(Resource, ":", Name, " [", Type, "]"), isnotempty(Name)),
+    AppName = take_any(AppName), Publisher = take_any(Publisher), AppOrigin = take_any(AppOrigin),
+    AppOwnerTenantId = take_any(AppOwnerTenantId), ServicePrincipalId = take_any(ServicePrincipalId),
+    AdminConsented = take_any(AdminConsented), AddedOn = take_any(AddedOn),
+    LastModified = take_any(LastModified), LastUsed = take_any(LastUsed)
+    by OAuthAppId
+// Delegated rights only matter when the app is external AND unverified
+| extend DelegatedHigh_ExternalUnverified =
+    iff(isempty(Publisher) and AppOrigin =~ "External", DelegatedHigh, dynamic([]))
+| extend ReviewReason = case(
+    array_length(PrivEsc_AppOnly) > 0, "App-only rights to escalate privilege or plant credentials",
+    array_length(DataAccess_AppOnly) > 0, "App-only mail / file / site access",
+    array_length(DelegatedHigh_ExternalUnverified) > 0, "High-privilege consent on external, unverified app",
+    "No risky permissions")
+| where ReviewReason != "No risky permissions" or not(OnlyRisky)
+| extend Activity = case(isnull(LastUsed), "Unknown", LastUsed < ago(90d), "Inactive 90d+", "Active")
+| order by array_length(PrivEsc_AppOnly) desc, array_length(DataAccess_AppOnly) desc, LastModified desc
+| project AppName, ReviewReason, Publisher, AppOrigin, AppOwnerTenantId,
+          AdminConsented = case(AdminConsented == true, "Yes", AdminConsented == false, "No", "Unknown"),
+          Activity, LastUsed = format_datetime(LastUsed, "yyyy-MM-dd"),
+          PrivEsc_AppOnly = array_strcat(array_sort_asc(PrivEsc_AppOnly), "; "),
+          DataAccess_AppOnly = array_strcat(array_sort_asc(DataAccess_AppOnly), "; "),
+          DelegatedHigh_ExternalUnverified = array_strcat(array_sort_asc(DelegatedHigh_ExternalUnverified), "; "),
+          TotalPermissions = array_length(AllPerms),
+          AllPermissions = array_strcat(array_sort_asc(AllPerms), "; "),
+          OAuthAppId, ServicePrincipalId,
+          AddedOn = format_datetime(AddedOn, "yyyy-MM-dd"),
+          LastModified = format_datetime(LastModified, "yyyy-MM-dd")
