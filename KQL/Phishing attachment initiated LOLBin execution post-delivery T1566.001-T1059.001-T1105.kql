@@ -1,3 +1,14 @@
+// Title:        Phishing attachment initiated LOLBin execution post-delivery
+// Rationale:    Flags LOLBins (PowerShell, cmd, mshta, rundll32, regsvr32, certutil,
+//               bitsadmin, WMIC, expand) started by an Office app, Outlook, a PDF reader,
+//               Explorer or a browser (or their child) with download, decode or encoded-
+//               command patterns that reference Downloads, Temp, Desktop or INetCache.
+//               Attaches any attachment-type file written by Outlook, a browser or Explorer
+//               within the previous 4h.
+// MITRE ATT&CK: T1566.001 — Spearphishing Attachment
+//               T1204.002 — Malicious File
+//               T1059.001 — PowerShell
+//               T1105 — Ingress Tool Transfer
 let Lookback = 1d;
 // Suspicious LOLBin children (core phishing downloaders)
 let SuspiciousChildren = dynamic([
