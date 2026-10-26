@@ -1,3 +1,8 @@
+// Title: RALord Nova IOCs Sweep
+// Rationale:   Pulls the RALord / Nova ransomware file hashes from the author's IOC list on
+//              GitHub, adds global prevalence (FileProfile), and shows where each was last
+//              seen in device file events over 30 days.
+// Ref:         https://raw.githubusercontent.com/a2awais/Threat-Intelligence/refs/heads/main/IOCs/RALord-NOVA-Ransomeware.csv
 let RALordIOCs =
     externaldata(FileName: string, SHA256: string)
     ["https://raw.githubusercontent.com/a2awais/Threat-Intelligence/refs/heads/main/IOCs/RALord-NOVA-Ransomeware.csv"]
