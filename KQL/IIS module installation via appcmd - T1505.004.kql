@@ -1,3 +1,7 @@
+// Title:        IIS module installation via appcmd
+// Rationale:    Flags appcmd.exe installing a native IIS module outside the IIS setup
+//               process: how IIS backdoor modules are registered.
+// MITRE ATT&CK: T1505.004 — IIS Components
 DeviceProcessEvents
 | where FileName == "appcmd.exe"
 | where ProcessCommandLine has_all ("install", "module")
