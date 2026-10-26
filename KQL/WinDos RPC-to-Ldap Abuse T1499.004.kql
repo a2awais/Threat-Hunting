@@ -1,3 +1,13 @@
+// Title:       WinDos RPC-to-Ldap Abuse
+// Rationale:   Correlates four signals on domain controllers (matched by a naming pattern
+//              you set): outbound _ldap SRV DNS lookups resolving to public addresses,
+//              bursts of LDAP/RPC/SMB connections, LDAP spikes from lsass or svchost, and
+//              lsass or svchost issuing RPC service stop or restart commands. This is the
+//              shape of SafeBreach's Win-DDoS research, where an unauthenticated RPC call
+//              makes a DC act as an LDAP client that follows attacker referrals, flooding a
+//              victim or crashing LSASS (CVE-2025-32724).
+// MITRE ATT&CK: T1499.004 — Application or System Exploitation AND T1498 — Network Denial of Service
+// Reference:  https://www.safebreach.com/blog/win-dos-epidemic-abusing-rpc-for-dos-and-ddos/
 // Hunt Window: adjust based on need
 let lookback = 7d;
 let ldap_ports = dynamic([389, 636, 3268, 3269]);  // LDAP / LDAPS / GC ports
