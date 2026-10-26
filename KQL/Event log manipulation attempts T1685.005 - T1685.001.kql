@@ -1,4 +1,9 @@
-// Hunt for activities that may indicate disabling or tampering with Windows Event Logging
+// Title:        Event log manipulation attempts
+// Rationale:    Flags clearing (wevtutil cl, auditpol /clear) and disabling (net/sc stop
+//               eventlog, auditpol /set, EventLog service registry edits) of Windows event
+//               logging by non-SYSTEM accounts.
+// MITRE ATT&CK: T1685.005 — Clear Windows Event Logs
+//               T1685.001 — Disable or Modify Windows Event Log
 let legituser = dynamic(["system"]);
 let expectedcommands = dynamic(["..."]);
 let suspiciousCommands = dynamic([
