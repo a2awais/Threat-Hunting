@@ -6,7 +6,7 @@
 // MITRE ATT&CK: T1036.003 — Rename Legitimate Utilities
 //               T1059.006 — Python
 //               T1105 — Ingress Tool Transfer
-// Reference:  https://www.sentinelone.com/labs/ghost-in-the-zip-new-pxa-stealer-and-its-telegram-powered-ecosystem/
+// Reference:    https://www.sentinelone.com/labs/ghost-in-the-zip-new-pxa-stealer-and-its-telegram-powered-ecosystem/
 DeviceProcessEvents
 | where Timestamp > ago(7d)
 | where FileName =~ "svchost.exe"
