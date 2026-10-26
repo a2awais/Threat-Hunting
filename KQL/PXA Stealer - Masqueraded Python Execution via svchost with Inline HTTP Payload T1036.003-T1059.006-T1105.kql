@@ -1,0 +1,27 @@
+// Title:        PXA Stealer - Masqueraded Python Execution via svchost with Inline HTTP Payload
+// Rationale:    Flags svchost.exe running from a user folder whose original file name is
+//               python.exe or pythonw.exe and whose command line runs inline code that
+//               imports requests, fetches a URL and calls exec(). PXA Stealer renames its
+//               Python interpreter svchost.exe under C:\Users\Public.
+// MITRE ATT&CK: T1036.003 — Rename Legitimate Utilities
+//               T1059.006 — Python
+//               T1105 — Ingress Tool Transfer
+// Reference:  https://www.sentinelone.com/labs/ghost-in-the-zip-new-pxa-stealer-and-its-telegram-powered-ecosystem/
+DeviceProcessEvents
+| where Timestamp > ago(7d)
+| where FileName =~ "svchost.exe"
+| where FolderPath has @"\Users\"
+| where ProcessCommandLine has " -c "
+| where ProcessCommandLine has_all ("import", "requests")
+| where ProcessCommandLine has "exec("
+| where ProcessCommandLine has_any ("http://", "https://")
+| where ProcessVersionInfoOriginalFileName in~ ("python.exe", "pythonw.exe")
+| project Timestamp,
+          DeviceName,
+          AccountName,
+          FileName,
+          FolderPath,
+          ProcessCommandLine,
+          InitiatingProcessFileName,
+          InitiatingProcessCommandLine
+| order by Timestamp desc
