@@ -1,3 +1,9 @@
+// Title:        EDR Silencer and interpreter based bypass	
+// Rationale:    Flags EDRSilencer.exe, or any process started by a script host or LOLBin
+//               whose command line carries EDRSilencer's verbs (block, blockedr, unblock,
+//               unblockall), excluding document-opening command lines. EDRSilencer adds
+//               Windows Filtering Platform rules that stop EDR agents sending telemetry.
+// MITRE ATT&CK: T1685 — Disable or Modify Tools
 // Define suspicious command-line flags that indicate EDR silencing activity
 let suspect_flags_regex = @"(?i)\b(blockedr|block|unblockall|unblock)\b";
 // List of common interpreter/script host processes that attackers use to launch tools
