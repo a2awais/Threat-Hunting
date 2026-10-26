@@ -1,3 +1,10 @@
+// Title:       LNK file execution by Scripting Engines
+// Rationale:   Flags shortcut (.lnk) events raised by script interpreters or LOLBins where
+//              the link does not open a normal window, and marks embedded-command flags and
+//              Temp/AppData working directories: weaponised shortcut files used as phishing
+//              payloads.
+// MITRE ATT&CK: T1204.002 — Malicious File
+//               T1564.003 — Hidden Window
 DeviceEvents
 | where Timestamp > ago(7d)  // Adjust based on hunting needs
 | where FileName endswith ".lnk"
