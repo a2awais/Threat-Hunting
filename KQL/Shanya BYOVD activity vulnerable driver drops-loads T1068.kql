@@ -1,0 +1,19 @@
+// Title:         Shanya BYOVD activity vulnerable driver drops-loads
+// Rationale:     Flags writes of the drivers Sophos tied to the Shanya-packed EDR killer,
+//                ThrottleStop.sys / rwdrv.sys (a legitimate TechPowerUp driver abused for
+//                kernel write access) and hlpdrv.sys (an unsigned malicious driver), and
+//                DriverLoad events for them.
+// MITRE ATT&CK:  T1068 — Exploitation for Privilege Escalation AND T1685 — Disable or Modify Tools
+// Reference:     https://www.sophos.com/en-us/blog/inside-shanya-a-packer-as-a-service-fueling-modern-attacks
+DeviceFileEvents
+| where Timestamp > ago(1d)
+| where FileName in~ ("throttlestop.sys", "rwdrv.sys", "hlpdrv.sys", "wmp.dll")
+| where ActionType in ("FileCreated", "FileModified")
+| project Timestamp, DeviceName, FileName, FolderPath, SHA256, InitiatingProcessFileName
+| union
+(DeviceEvents
+| where Timestamp > ago(30d)
+| where ActionType == "DriverLoad"
+| where FileName in~ ("throttlestop.sys", "hlpdrv.sys")
+| project Timestamp, DeviceName, FileName, FolderPath, InitiatingProcessFileName)
+| order by Timestamp desc
