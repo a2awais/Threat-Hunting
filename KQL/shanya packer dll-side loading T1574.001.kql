@@ -1,8 +1,7 @@
-// Title: shanya packer dll-side loading	
+// Title:       Shanya packer dll-side loading	
 // Rationale:   Flags consent.exe (the Windows UAC host) loading msimg32.dll, version.dll,
 //              rtworkq.dll or wmsgapi.dll, or any DLL named shanya or sh4nya: the side-
-//              loading host and DLL names Sophos documented for the Shanya packer. Two
-//              Microsoft DLL hashes are excluded.
+//              loading host and DLL names Sophos documented for the Shanya packer.
 // MITRE ATT&CK: T1574.001 — DLL AND T1027.002 — Software Packing
 // Reference:  https://www.sophos.com/en-us/blog/inside-shanya-a-packer-as-a-service-fueling-modern-attacks
 DeviceImageLoadEvents
