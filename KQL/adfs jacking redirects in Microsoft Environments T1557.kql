@@ -1,3 +1,12 @@
+// Title:       ADFS jacking redirects in Microsoft Environments
+// Rationale:   Flags login.microsoftonline.com or /adfs/ls/ requests whose redirect
+//              parameter (redirect_uri, wreply) points outside Microsoft domains or to the
+//              ADFSjacking domains (bluegraintours.com, offirmtm.com). In Push Security's
+//              ADFSjacking chain, a malvertised outlook.office.com link and an attacker-run
+//              ADFS tenant hand the user to a reverse-proxy phishing page that captures the
+//              session.
+// MITRE ATT&CK: T1557 — Adversary-in-the-Middle AND T1539 — Steal Web Session Cookie
+// Reference:  https://pushsecurity.com/blog/phishing-with-active-directory-federation-services
 let SuspiciousDomains = dynamic(["bluegraintours.com", "offirmtm.com", "Add more IOCs here if available" ]);
 let KnownMicrosoftDomains = dynamic([
   "microsoftonline.com", "office.com", "microsoft.com", "outlook.office.com", "Add more legit domains here if needed"
