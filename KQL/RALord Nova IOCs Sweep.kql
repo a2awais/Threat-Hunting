@@ -1,4 +1,4 @@
-// Title: RALord Nova IOCs Sweep
+// Title:       RALord Nova IOCs Sweep
 // Rationale:   Pulls the RALord / Nova ransomware file hashes from the author's IOC list on
 //              GitHub, adds global prevalence (FileProfile), and shows where each was last
 //              seen in device file events over 30 days.
