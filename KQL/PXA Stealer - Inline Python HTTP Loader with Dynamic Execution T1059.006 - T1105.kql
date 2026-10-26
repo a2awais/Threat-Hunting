@@ -1,0 +1,19 @@
+// Title:        PXA Stealer - Inline Python HTTP Loader with Dynamic Execution
+// Rationale:    Flags any process whose command line runs inline Python (-c) that imports
+//               requests, fetches over HTTP(S) and calls exec(): a fileless Python stage
+//               that downloads and runs its next stage in memory.
+// MITRE ATT&CK: T1059.006 — Python
+//               T1105 — Ingress Tool Transfer
+DeviceProcessEvents
+| where Timestamp > ago(1d)
+| where ProcessCommandLine has " -c "
+| where ProcessCommandLine has "import requests"
+| where ProcessCommandLine has "exec("
+| where ProcessCommandLine has_any ("requests.get","urllib","http://","https://")
+| project Timestamp,
+          DeviceName,
+          AccountName,
+          FileName,
+          ProcessCommandLine,
+          InitiatingProcessFileName
+| order by Timestamp desc
