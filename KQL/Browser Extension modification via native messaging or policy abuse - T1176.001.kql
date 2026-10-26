@@ -1,3 +1,10 @@
+// Title: Browser Extension modification via native messaging or policy abuse	
+// Rationale:   Correlates, on one device within 1h, an .exe, .dll or .pyd written into a
+//              Chrome, Edge or Firefox extension folder with a change to the
+//              NativeMessagingHosts or ExtensionInstallForcelist registry keys: a malicious
+//              extension installed by policy, or paired with a native host that runs code
+//              outside the browser sandbox.
+// MITRE ATT&CK: T1176.001 — Browser Extensions
 let lookback = 1d;
 let writes = DeviceFileEvents
 | where Timestamp >= ago(lookback)
@@ -36,5 +43,4 @@ writes
 // exclude obvious system/service actors (example list; replace with your environment allowlist)
 | where InitiatingProcessAccountName !in ("SYSTEM", "LOCAL SERVICE", "NETWORK SERVICE", "DOMAIN\\Your-svc-deploy") 
 | project WriteTime, RegTime, DeviceName, FolderPath, FileName, SHA1, MD5, RegistryKey, RegistryValueName, RegistryValueData, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessAccountName
-
 | sort by WriteTime desc
