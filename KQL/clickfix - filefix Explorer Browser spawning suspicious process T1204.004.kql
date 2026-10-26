@@ -1,4 +1,10 @@
-// References: https://mrd0x.com/filefix-clickfix-alternative/
+// Title:         Clickfix - filefix Explorer Browser spawning suspicious process
+// Rationale:     Flags cmd, PowerShell or mshta started by Explorer or a browser with
+//                download-and-execute patterns (Invoke-WebRequest, curl,
+//                DownloadFile/DownloadString, Net.WebClient, IEX) after a RunMRU entry on the
+//                same device recorded a similar command: the Win+R paste step of ClickFix.
+// MITRE ATT&CK:  T1204.004 — Malicious Copy and Paste AND T1059.001 — PowerShell
+// References:    https://mrd0x.com/filefix-clickfix-alternative/
 let suspiciousRegistry = DeviceRegistryEvents
 | where RegistryKey has "RunMRU"
 | where RegistryValueData has_any ("powershell", "curl", "Invoke-WebRequest", "IEX")
