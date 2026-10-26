@@ -1,4 +1,8 @@
-// Driver inventory monitoring with available Defender fields
+// Title:        Tracking Suspicious driver inventory to unearth Rootkits
+// Rationale:    Intended to flag kernel drivers (.sys) written to Temp or AppData by non-
+//               Microsoft processes and loaded with random-hex, system-mimicking or known-
+//               vulnerable names (gdrv.sys, winio.sys).
+// MITRE ATT&CK: T1014 — Rootkit AND T1068 — Exploitation for Privilege Escalation
 DeviceImageLoadEvents
 | where Timestamp > ago(7d)
 // Join with DeviceFileEvents to get signing info
@@ -25,4 +29,3 @@ DeviceImageLoadEvents
     InitiatingProcessVersionInfoCompanyName,
     IsTempLoad = iff(FolderPath1 contains @"Temp\", true, false),
     SHA256
-
