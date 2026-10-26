@@ -1,3 +1,10 @@
+// Title:       Suspicious Scheduled task
+// Rationale:   Flags scheduled tasks created by user accounts (not machine accounts) whose
+//              name blends in (update, maintask, sync, backup, logon, or the EnterpriseMgmt
+//              path) and whose action runs PowerShell, cmd, certutil, bitsadmin, mshta,
+//              rundll32 or a script host. Encoded PowerShell is ranked HIGH and
+//              certutil/bitsadmin MEDIUM.
+// MITRE ATT&CK: T1053.005 — Scheduled TaskDeviceEvents
 DeviceEvents
 | where ActionType == "ScheduledTaskCreated" and isnotempty(AdditionalFields)
 | extend ParsedFields = parse_json(AdditionalFields)
