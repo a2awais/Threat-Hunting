@@ -1,3 +1,16 @@
+// Title:        ConnectWise SkyKick App Exposure by Status	
+// Rationale:    Inventories OAuth apps matching the seven ConnectWise Cloud Backup / Cloud
+//               Management (formerly SkyKick) app IDs, the vendor tenant or the vendor
+//               names. Lists their application permissions, highlights those that can plant
+//               credentials or roles (Application.ReadWrite.All,
+//               AppRoleAssignment.ReadWrite.All, RoleManagement.ReadWrite.Directory,
+//               Directory.ReadWrite.All), and states the action for each app status. Follows
+//               the October 2026 abuse of the vendor's app credential across customer
+//               tenants.
+// MITRE ATT&CK: T1199 — Trusted Relationship
+//               T1098.001 — Additional Cloud Credentials
+//               T1098.003 — Additional Cloud Roles
+// Reference:  https://www.huntress.com/blog/vendor-credential-enables-unauthorized-access
 // Enabled = act now. Disabled/Deleted = contained, but still audit for planted secrets and roles.
 // Disable vendor apps, don't delete (deleting removes the consent).
 let CWApps = dynamic([
