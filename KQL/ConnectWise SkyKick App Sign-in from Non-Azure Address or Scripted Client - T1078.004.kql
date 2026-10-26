@@ -1,5 +1,11 @@
-// Vendor apps normally sign in from Azure private IPv6 (fd...) with the kiota-dotnet SDK.
-// A public address and/or a Python/curl client is the signal. Baseline your tenant first.
+// Title:       ConnectWise SkyKick App Sign-in from Non-Azure Address or Scripted Client.kql	
+// Rationale:   Flags sign-ins by the seven ConnectWise Cloud Backup / Cloud Management
+//              service principals from outside the Azure private IPv6 (fd...) range the
+//              vendor apps normally use, or from a scripted client (python-urllib, python-
+//              requests, curl): app-only use of the stolen vendor credential.
+// MITRE ATT&CK: T1078.004 — Cloud Accounts
+//               T1199 — Trusted Relationship
+// Reference:  https://www.huntress.com/blog/vendor-credential-enables-unauthorized-access
 let Lookback = 30d; // use 1d for a scheduled rule
 let CWApps = dynamic([
  "506e08f9-6e9a-4da4-942b-a099a03644ae", // Cloud Backup (formerly SkyKick)
