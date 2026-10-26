@@ -1,4 +1,15 @@
-// Intel: https://www.cloudsek.com/blog/reborn-in-rust-muddywater-evolves-tooling-with-rustywater-implant
+// Title:        Rustywater Muddywater rust based evolution
+// Rationale:    Flags Word, Excel or PowerPoint spawning cmd, PowerShell, mshta, rundll32 or
+//               a script host, and adds same-device Run-key writes and creation of
+//               CertificationKit.ini. This is the macro chain CloudSEK reported for
+//               MuddyWater's RustyWater implant: a VBA macro writes the Rust payload to
+//               C:\ProgramData\CertificationKit.ini, runs it through WScript.Shell/cmd and
+//               persists it in the HKCU Run key.
+// MITRE ATT&CK: T1566.001 — Spearphishing Attachment
+//               T1204.002 — Malicious File
+//               T1059.005 — Visual Basic
+//               T1547.001 — Registry Run Keys / Startup Folder
+// Reference: https://www.cloudsek.com/blog/reborn-in-rust-muddywater-evolves-tooling-with-rustywater-implant
 let Lookback = 1d;
 // Writable paths abused by MuddyWater/RustyWater
 let SuspiciousPaths = dynamic([
@@ -66,5 +77,4 @@ DeviceProcessEvents
     RegistryValueData,
     FileName1 = FileName1,
     FolderPath1 = FolderPath1
-
 | order by Timestamp desc
