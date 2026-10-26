@@ -1,5 +1,10 @@
+// Title:       Powershell based Active Directory Reconnaissance
+// Rationale:   Flags PowerShell (or its children) running Active Directory and host
+//              reconnaissance (account and group enumeration, GPO, trust, share and DNS
+//              discovery, admin-share mapping, ACL and replication reads, password-policy
+//              queries) and labels each hit with an ATT&CK technique.
 DeviceProcessEvents
-| where Timestamp > ago(7d)  // Adjust timeframe as needed
+| where Timestamp > ago(1d)  // Adjust timeframe as needed
 | where FileName =~ "powershell.exe" or InitiatingProcessFileName =~ "powershell.exe"
 | where ProcessCommandLine has_any(
     // T1087: Account Discovery 
@@ -52,5 +57,4 @@ DeviceProcessEvents
     )
 | project-rename PowerShellCommand=ProcessCommandLine, Host=DeviceName, User=AccountName
 | project Timestamp, Host, User, PowerShellCommand, MITRE_TTP, InitiatingProcessFileName
-
 | order by Timestamp desc
