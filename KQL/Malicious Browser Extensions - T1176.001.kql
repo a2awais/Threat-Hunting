@@ -1,3 +1,13 @@
+// Title:         Malicious Browser Extensions	
+// Rationale:     Matches the browser-extension inventory (DeviceTvmBrowserExtensions) against
+//                extension IDs from public reports: the BadBlocker ad blockers, extensions
+//                sharing a data-exfiltration C2, StegoAd, the AI-chat stealers, Urban VPN AI-
+//                conversation collection, legitimate extensions turned malicious, GitLab's
+//                February 2025 list, the Chrome extension supply-chain compromise and VK
+//                Styles.
+// MITRE ATT&CK:  T1176.001 — Browser Extensions
+ let YoutubeAdblocker = dynamic([
+ // Threat Intel: https://www.island.io/blog/badblocker-11-million-users-one-server-call-away-from-compromise
 let YoutubeAdblocker = dynamic([
 // Threat Intel: https://www.island.io/blog/badblocker-11-million-users-one-server-call-away-from-compromise
 "cmedhionkhpnakcndndgjdbohmhepckk", // Adblock for Youtube™ v7.2.2
