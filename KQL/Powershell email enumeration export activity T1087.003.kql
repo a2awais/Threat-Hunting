@@ -1,3 +1,10 @@
+// Title:       Powershell Email Enumeration Export Activity
+// Rationale:   Flags PowerShell running Exchange recipient enumeration (Get-Mailbox, Get-
+//              Recipient, Get-User, Get-DistributionGroupMember) or export cmdlets with
+//              bulk-output switches (-ResultSize, -ExpandProperty, -NoTypeInformation).
+//              Notes hidden or encoded execution and Office or browser parents, and
+//              attaches CSV/XML/ZIP/TXT files written by the same process.
+// MITRE ATT&CK: T1087.003 — Email Account AND T1059.001 — PowerShell
 let timeframe = 7d;
 let SuspiciousCmdlets = dynamic([
     "Get-Mailbox", "Get-Recipient", "Get-User", "Get-DistributionGroupMember", 
