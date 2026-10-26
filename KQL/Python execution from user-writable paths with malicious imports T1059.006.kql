@@ -1,3 +1,7 @@
+// Title:       Python execution from user-writable paths with malicious imports
+// Rationale:   Flags python, pythonw and py processes, outside IDEs, notebooks and SYSTEM,
+//              whose command line shows any one of: inline code (-c), a user-writable path,
+//              a suspicious import or exec/eval, or a download tool.
 // MITRE ATT&CK: T1059.006 – Command and Scripting Interpreter: Python
 let Lookback = 1d;
 let SuspiciousPaths = dynamic(["\\AppData\\", "\\Temp\\", "\\Downloads\\", "\\Public\\", "\\Users\\Public\\"]);
