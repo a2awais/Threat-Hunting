@@ -1,0 +1,16 @@
+// Title:       Network based hunting on high-frequency http-https connections
+// Rationale:   Counts successful public HTTP/HTTPS connections made by PowerShell, cmd,
+//              certutil, bitsadmin, curl or wget, per device and destination, and returns
+//              pairs above 50: tooling repeatedly calling the same server, as in beaconing
+//              or chunked transfer.
+// MITRE ATT&CK: T1071.001 — Web Protocols
+//               T1105 — Ingress Tool Transfer
+DeviceNetworkEvents
+| where ActionType == "ConnectionSuccess"
+| where RemoteIPType == "Public"
+| where RemotePort in (80, 443)
+| where InitiatingProcessFileName in~ ("powershell.exe", "cmd.exe", "certutil.exe", "bitsadmin.exe", "curl.exe", "wget.exe")
+| summarize ConnectionCount = count() by DeviceName, RemoteIP, RemoteUrl
+| where ConnectionCount > 50
+| project DeviceName, RemoteIP, RemoteUrl, ConnectionCount
+| order by ConnectionCount desc
