@@ -1,5 +1,10 @@
-// IOC IPs: Huntress and ConnectWise advisory 
-// https://www.huntress.com/blog/vendor-credential-enables-unauthorized-access
+// Title:        ConnectWise skykick abuse sign-ins from known attacker ips.kql	
+// Rationale:    Sweeps service-principal and user sign-ins from the attacker IPs Huntress
+//               and ConnectWise published. Service-principal rows are the vendor app signing
+//               in as itself; user rows are the password spray Huntress saw against law-firm
+//               tenants.
+// MITRE ATT&CK: T1078.004 — Cloud Accounts
+//               T1110.003 — Password Spraying
 // ServicePrincipal rows = apps signing in as themselves. User rows = people (password spray).
 let Lookback = 30d; // use 1d for a scheduled rule
 let AttackerIPs = dynamic(["144.172.64.128","144.172.64.99","144.172.64.60"]);
