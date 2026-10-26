@@ -1,4 +1,20 @@
-// Notepad++ Supply Chain Attack Detection
+// Title:       Notepad++ Supply Chain Attack Detection
+// Rationale:   Flags GUP.exe or update.exe (Notepad++'s updater and the hijacked update
+//              binary) spawning cmd, PowerShell, curl or certutil for host reconnaissance
+//              and upload (whoami, tasklist, systeminfo, netstat, output to .txt, curl -F).
+//              Within 10 minutes it attaches side-loading by BluetoothService.exe (log.dll)
+//              or script.exe (alien.dll, lua5.1.dll) from AppData and network connections
+//              from those processes. These are the three chains Kaspersky documented for
+//              the 2025 Notepad++ update hijack; Rapid7 attributes the Chrysalis chain to
+//              Lotus Blossom with moderate confidence.
+// MITRE ATT&CK: T1195.002 — Compromise Software Supply Chain
+//               T1033 — System Owner/User Discovery
+//               T1057 — Process Discovery
+//               T1082 — System Information Discovery
+//               T1049 — System Network Connections Discovery
+//               T1567 — Exfiltration Over Web Service
+//               T1574.001 — DLL
+// Reference:    https://securelist.com/notepad-supply-chain-attack/118708/
 let Lookback = 90d;
 // Updater Execution
 let SuspiciousUpdaterExecution = 
