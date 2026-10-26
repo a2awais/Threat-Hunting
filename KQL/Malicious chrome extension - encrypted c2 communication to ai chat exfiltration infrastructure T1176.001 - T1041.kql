@@ -1,0 +1,29 @@
+// Title:        Malicious chrome extension - encrypted c2 communication to ai chat exfiltration infrastructure
+// Rationale:    Flags successful Chrome HTTPS connections to the infrastructure of the two
+//               AI-chat-stealing extensions OX Security reported in December 2025.
+//               deepaichats.com and chatsaigpt.com receive the stolen ChatGPT and DeepSeek
+//               conversations in 30-minute batches; chataigpt.pro and chatgptsidebar.pro
+//               host the extensions' policy and uninstall pages.
+// MITRE ATT&CK: T1176.001 — Browser Extensions
+//               T1041 — Exfiltration Over C2 Channel
+// Reference:    https://www.ox.security/blog/malicious-chrome-extensions-steal-chatgpt-deepseek-conversations
+let C2Domains = dynamic([
+    "deepaichats.com",
+    "chatsaigpt.com",
+    "chataigpt.pro",
+    "chatgptsidebar.pro"
+]);
+DeviceNetworkEvents
+| where InitiatingProcessFileName =~ "chrome.exe"
+| where RemoteUrl has_any (C2Domains)
+| where ActionType == @"ConnectionSuccess"
+| where RemotePort == 443
+| project
+    Timestamp,
+    DeviceName,
+    InitiatingProcessRemoteSessionDeviceName,
+    InitiatingProcessAccountName,
+    InitiatingProcessFileName,
+    RemoteUrl,
+    RemoteIP
+| order by Timestamp desc
