@@ -1,4 +1,9 @@
-// DLL Side-Loading Detection (Subtle Snail / Lazarus-style)
+// Title:       DLL Side-Loading Detection (Subtle Snail / Lazarus-style)
+// Rationale:   Flags a signed, trusted, non-system process loading an unsigned or untrusted
+//              DLL from a user-writable path, where the DLL was written within the previous
+//              12h: the side-loading used to launch Subtle Snail (UNC1549) backdoors.
+//              Machine and service accounts and common system hosts are excluded.
+// MITRE ATT&CK: T1574.001 — DLL
 let lookback = 24h;
 let recentWindowHours = 12h;
 let UserExecutionPaths = dynamic(["\\Users\\","\\Downloads\\","\\AppData\\Local\\Temp\\","\\AppData\\Roaming\\"]);
