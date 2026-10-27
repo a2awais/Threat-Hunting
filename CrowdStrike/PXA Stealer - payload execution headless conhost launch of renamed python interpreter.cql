@@ -1,3 +1,11 @@
+// Title:        PXA Stealer - payload execution headless conhost launch of renamed python interpreter.cql	
+// Rationale:    Flags conhost.exe --headless launching a renamed interpreter or decoded
+//               payload (svchost.exe, synaptics.exe, certutil -decode, Users\Public,
+//               AppData, Temp) together with image-named payloads (.ico, .png), bot-ID
+//               markers (MRB_, DA_NEW_VER_, BOT) or a cmd/PowerShell/script-host parent.
+// MITRE ATT&CK: T1564.003 — Hidden Window
+//               T1036.005 — Match Legitimate Resource Name or Location
+//               T1140 — Deobfuscate/Decode Files or Information
 #event_simpleName = ProcessRollup2
 | FileName = conhost.exe
 | CommandLine = "*--headless*"
