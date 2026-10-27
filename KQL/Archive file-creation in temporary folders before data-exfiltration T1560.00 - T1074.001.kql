@@ -1,0 +1,12 @@
+// Title:        Archive file creation in temporary folders before data-exfiltration
+// Rationale:    Flags .zip, .7z or .rar files over 50 MB created in common staging folders
+//               (C:\Users\Public, C:\ProgramData, C:\Windows\Temp, C:\PerfLogs) by
+//               PowerShell, cmd, 7-Zip, WinRAR or Explorer: bulk data staged before
+//               exfiltration.
+// MITRE ATT&CK: T1560.001 — Archive via Utility
+//               T1074.001 — Local Data Staging
+DeviceFileEvents
+| where FolderPath has_any ( @"C:\Users\Public\", @"C:\ProgramData\", @"C:\Windows\Temp", @"C:\PerfLogs")
+| where FileName endswith ".zip" or FileName endswith ".7z" or FileName endswith ".rar"
+| where InitiatingProcessFileName has_any ("powershell.exe", "cmd.exe", "7z.exe", "winrar.exe", "explorer.exe")
+| where FileSize > 50000000  // >50MB
