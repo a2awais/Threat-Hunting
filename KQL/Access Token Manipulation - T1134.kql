@@ -1,3 +1,12 @@
+// Title:         Access Token Manipulation	
+// Rationale:     Flags primary-token changes (Defender ProcessPrimaryTokenModified) where the
+//                token's user SID or source changes, integrity rises (Low to Medium, Medium
+//                to High, or to System), dangerous privileges are added (SeDebug, SeTcb,
+//                SeImpersonate, SeAssignPrimaryToken, SeBackup, SeRestore) or the token
+//                becomes SYSTEM: token theft and impersonation used to escalate. Core OS
+//                processes are excluded.
+// MITRE ATT&CK:  T1134 — Access Token Manipulation
+//                T1134.001 — Token Impersonation/Theft
 DeviceEvents
 | where Timestamp > ago(30d)  // Adjust time range based on hunting needs
 | where ActionType == "ProcessPrimaryTokenModified"  // Core event for token manipulation
