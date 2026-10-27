@@ -1,4 +1,4 @@
-// Title:        PXA Stealer - payload execution headless conhost launch of renamed python interpreter.cql	
+// Title:        PXA Stealer - payload execution headless conhost launch of renamed python interpreter
 // Rationale:    Flags conhost.exe --headless launching a renamed interpreter or decoded
 //               payload (svchost.exe, synaptics.exe, certutil -decode, Users\Public,
 //               AppData, Temp) together with image-named payloads (.ico, .png), bot-ID
