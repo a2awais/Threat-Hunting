@@ -1,3 +1,10 @@
+// Title:        UNC1549 - Mirage Kitten - Subtle Snail Office Browser Spawn of Executable from User-paths with File Creation
+// Rationale:    Flags an .exe in a user-writable path (Users, Downloads, Temp, Roaming)
+//               started by Word, Excel, PowerPoint or Outlook, or by a browser whose command
+//               line carries recruitment terms (linkedin, careers, job, interview, cv),
+//               where the same file was first written within the previous 24h: the fake-
+//               recruiter lure reaching execution, as reported for Subtle Snail (UNC1549).
+// MITRE ATT&CK: T1204.002 — Malicious File
 // High-fidelity: Office/browser -> EXE spawn from recruitment lures (Subtle Snail)
 // 7d lookback, 24h freshness for created files
 let lookback = 3d;
