@@ -1,3 +1,6 @@
+// Title:       UNC2814 C2 and attacker-controlled IP
+// Rationale:   Sweeps outbound IPv4 connections to the UNC2814 C2 and attacker-controlled
+//              IPs from the February 2026 GRIDTIDE disclosure.
 // UNC2814 C2 and attacker-controlled IP
 #event_simpleName = NetworkConnectIP4
 | RemoteAddressIP4 = /^(130\.94\.6\.228|38\.180\.205\.14|38\.60\.194\.21|38\.54\.112\.184|38\.60\.171\.242|195\.123\.211\.70|202\.59\.10\.122|38\.60\.252\.66|45\.76\.184\.214|45\.90\.59\.129)$/
