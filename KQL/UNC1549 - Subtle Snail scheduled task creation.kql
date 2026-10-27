@@ -1,3 +1,9 @@
+// Title:        UNC1549 - Subtle Snail - Mirage Kitten - scheduled task creation
+// Rationale:    Flags schtasks.exe /create whose command line references Subtle Snail
+//               (UNC1549) file names or staging paths (AppData\Local\Microsoft\MigAutoPlay,
+//               Downloads), or which is launched by Explorer or a browser, outside SYSTEM
+//               and service accounts.
+// MITRE ATT&CK: T1053.005 — Scheduled Task
 let SubtleSnailHashes = dynamic([
     // Add latest known Subtle Snail file hashes here
     "41d60b7090607e0d4048a3317b45ec7af637d27e5c3e6e89ea8bdcad62c15bf9",
