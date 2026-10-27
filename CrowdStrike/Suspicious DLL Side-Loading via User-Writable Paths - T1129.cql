@@ -1,3 +1,10 @@
+// Title:       Suspicious DLL Side-Loading via User-Writable Paths - T1129
+// Rationale:   Flags a process started from a user-writable folder and marked as downloaded
+//              from the internet (Zone.Identifier 3) that loads a DLL from a user-writable
+//              folder whose on-disk name differs from its OriginalFilename: a renamed DLL
+//              side-loaded by a downloaded executable.
+// MITRE ATT&CK: T1574.001 — DLL
+//               T1036 — Masquerading
 #event_simpleName="ProcessRollup2"
 | ZoneIdentifier = 3
 | in(field="FilePath", values=["*\\Users\\Public\\*",
