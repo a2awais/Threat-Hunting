@@ -1,3 +1,8 @@
+// Title:        Suspicious Group Policy Enumeration Activity - T1615
+// Rationale:    Flags cmd, PowerShell, WMIC or rundll32 running Group Policy discovery
+//               (gpresult, RSoP, secedit export/analyze, policy registry queries,
+//               GroupPolicy and PowerView cmdlets, groupPolicyContainer LDAP lookups),
+//               excluding Group Policy's own processes and MMC.
 // MITRE ATT&CK: T1615 – Group Policy Discovery
 #event_simpleName="ProcessRollup2"
 | in(field="FileName", values=[
