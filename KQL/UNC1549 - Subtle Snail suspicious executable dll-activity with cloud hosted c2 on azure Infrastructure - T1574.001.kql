@@ -1,3 +1,11 @@
+// Title:        UNC1549 - Mirage Kitten - Subtle Snail - suspicious executable dll-activity with cloud hosted c2 on azure Infrastructure.kql	
+// Rationale:    Correlates, per device, an .exe written to a user-writable folder, a DLL
+//               loaded from the same folder, and a connection by the loading process to
+//               Azure-hosted endpoints (azurewebsites.net, blob.core.windows.net,
+//               cloudapp.net, azureedge.net, trafficmanager.net): a side-loaded implant
+//               calling Azure-hosted C2, as reported for UNC1549.
+// MITRE ATT&CK: T1574.001 — DLL
+//               T1071.001 — Web Protocols
 let lookback = 1d;
 let azure_hosts = dynamic([".azurewebsites.net", ".blob.core.windows.net", ".cloudapp.net", ".azureedge.net", ".function.azure.com", ".trafficmanager.net"]);
 let downloads = DeviceFileEvents
