@@ -1,3 +1,13 @@
+// Title:       Suspicious Exchange Mailbox Export or Recon via PowerShell-Webshell - T1114 - T1129
+// Rationale:   Flags PowerShell, cmd, w3wp and other script runtimes running Exchange
+//              mailbox export, search, permission and compliance-search cmdlets, or
+//              downloader and obfuscation switches, that also make a network connection:
+//              mailbox collection and reconnaissance through Exchange PowerShell or a web
+//              shell.
+// MITRE ATT&CK: T1114.002 — Remote Email Collection
+//               T1087.003 — Email Account
+//               T1505.003 — Web Shell
+//               T1059.001 — PowerShell
 #event_simpleName="ProcessRollup2"
  /* optional: uncomment if you want to track the files downloaded from internet:
   | ZoneIdentifier = 3 
