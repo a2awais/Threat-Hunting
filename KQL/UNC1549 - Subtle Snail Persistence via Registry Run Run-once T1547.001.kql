@@ -1,3 +1,8 @@
+// Title:        UNC1549 - Mirage Kitten - Subtle Snail Persistence via Registry Run Run-once
+// Rationale:    Flags Run or RunOnce values (HKLM or HKCU) whose name or data references the
+//               Subtle Snail (UNC1549) artifact names in the query: MiniBike, MiniJunk,
+//               SenseSampleUploader, MigAutoPlay, userenv.dll, xmllite.dll and setup.exe.
+// MITRE ATT&CK: T1547.001 — Registry Run Keys / Startup Folder
 let SuspiciousNames = dynamic(["MiniBike", "SenseSampleUploader", "MigAutoPlay", "MiniJunk", "setup", "userenv", "xmllite"]);
 let SuspiciousFiles = dynamic(["MiniBike.dll", "MiniJunk.exe", "SenseSampleUploader.exe", "MigAutoPlay.exe", "setup.exe", "userenv.dll", "xmllite.dll"]);
 // Known user/machine Run/RunOnce keys
