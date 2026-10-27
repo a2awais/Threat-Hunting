@@ -1,3 +1,8 @@
+// Title:        Suspicious Python Execution from User-Writable Paths with Malicious Import - T1059.006
+// Rationale:    Flags python, pythonw and py processes, outside IDEs, notebooks and SYSTEM,
+//               that run inline code (-c) or from a user-writable path AND show an attacker-
+//               style indicator: socket, subprocess, ctypes, base64 or urllib imports,
+//               exec/eval, pip install, or wget/curl/bitsadmin/PowerShell.
 // MITRE ATT&CK: T1059.006 – Command and Scripting Interpreter: Python
 #event_simpleName="ProcessRollup2"
 | in(field="FileName", values=[
