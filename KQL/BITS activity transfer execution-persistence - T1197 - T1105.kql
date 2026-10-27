@@ -1,3 +1,11 @@
+// Title:        BITS activity transfer execution-persistence
+// Rationale:    Flags bitsadmin, the PowerShell BITS cmdlets (Start-/Set-BitsTransfer) and
+//               WMIC BITS use that move files, register a notify command line
+//               (SetNotifyCmdLine, SetNotifyFlags) or come from risky parents (script hosts,
+//               Office, mshta, rundll32, regsvr32): BITS used to pull tools and to persist
+//               through job notifications.
+// MITRE ATT&CK: T1197 — BITS Jobs
+//               T1105 — Ingress Tool Transfer
 let timeframe = 7d;
 let suspiciousBitsCommands = dynamic([
     "SetNotifyFlags", 
@@ -98,7 +106,6 @@ DeviceProcessEvents
     or isnotempty(PersistenceIndicator) 
     or isnotempty(FileCopyIndicator) 
     or isnotempty(CodeExecutionIndicator)
-// Final projection
 | project-reorder 
     Timestamp, 
     DeviceName, 
