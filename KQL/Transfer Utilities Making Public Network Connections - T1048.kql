@@ -1,0 +1,32 @@
+// Title:        Hunt: Transfer Utilities Making Public Network Connections
+// Rationale:    Network-layer view of the same tooling.
+//               It catches exfil where the command line is obfuscated, wrapped in a script, or the binary is renamed, and gives you destination context (IP, URL, port) for pivoting.
+//               BITS is excluded because transfers are performed by svchost.exe, not bitsadmin.exe.
+// MITRE ATT&CK: T1048, T1567.002, T1071.001 (Web Protocols)
+// ----------------------------------------------------------------------------
+let Lookback = 7d;
+DeviceNetworkEvents
+| where Timestamp > ago(Lookback)
+| where ActionType == "ConnectionSuccess"
+| where RemoteIPType == "Public"
+| where InitiatingProcessFileName in~ (
+        "curl.exe", "wget.exe", "rclone.exe",
+        "winscp.exe", "pscp.exe", "scp.exe", "sftp.exe",
+        "azcopy.exe", "aws.exe", "gcloud.exe", "ftp.exe"
+    )
+    or InitiatingProcessVersionInfoOriginalFileName in~ (
+        "rclone.exe", "winscp.exe", "azcopy.exe"
+    )
+// ---- Tune exclusions here ----
+// | where RemoteUrl !has_any ("<trusted_domain_1>", "<trusted_domain_2>")
+| summarize
+    FirstSeen = min(Timestamp),
+    LastSeen = max(Timestamp),
+    Conns = count(),
+    RemoteIPs = make_set(RemoteIP, 10),
+    RemoteUrls = make_set(RemoteUrl, 10),
+    RemotePorts = make_set(RemotePort, 10),
+    Cmds = make_set(InitiatingProcessCommandLine, 5)
+    by DeviceId, DeviceName, InitiatingProcessAccountName,
+       InitiatingProcessFileName, InitiatingProcessVersionInfoOriginalFileName
+| order by Conns desc
