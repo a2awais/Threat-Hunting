@@ -1,0 +1,34 @@
+// Title:        Hunt: Script-Based Data Upload via PowerShell / WSH
+// Rationale:    When binaries are blocked or the operator is living off the land, uploads are done with .NET primitives
+//               and cmdlets (WebClient.UploadFile, Invoke-RestMethod -Method Post -InFile, FtpWebRequest).
+//               The logic is anchored on strong upload indicators (not just webclient + a URL, which mostly catches download cradles).
+// MITRE ATT&CK: T1059.001 (PowerShell)
+//               T1059.005 (Visual Basic)
+//               T1048, T1567, T1041 (Exfil Over C2 Channel)
+// ----------------------------------------------------------------------------
+let Lookback = 7d;
+DeviceProcessEvents
+| where Timestamp > ago(Lookback)
+| where FileName in~ (
+        "powershell.exe", "pwsh.exe", "powershell_ise.exe",
+        "wscript.exe", "cscript.exe", "mshta.exe"
+    )
+| where
+    // Unambiguous .NET upload primitives
+    ProcessCommandLine has_any (
+        "uploadfile", "uploadstring", "uploaddata", "uploadvalues",
+        "ftpwebrequest", "multipart/form-data", "postasync"
+    )
+    // Web cmdlets sending local content
+    or (ProcessCommandLine has_any ("invoke-webrequest", "invoke-restmethod", "iwr", "irm")
+        and (ProcessCommandLine has "-infile"
+             or ProcessCommandLine matches regex @"(?i)-method\s+(post|put)"))
+// ---- Tune exclusions here ----
+// | where InitiatingProcessParentFileName !~ "<known_automation_parent>.exe"
+// | where InitiatingProcessFileName !~ "<known_integration_engine>.exe"
+// | where ProcessCommandLine !has "<trusted_internal_endpoint>"
+| project Timestamp, DeviceName, AccountName,
+          FileName, ProcessCommandLine, ProcessId, FolderPath,
+          InitiatingProcessFileName, InitiatingProcessCommandLine,
+          InitiatingProcessParentFileName, SHA256, InitiatingProcessSHA256
+| order by Timestamp desc
