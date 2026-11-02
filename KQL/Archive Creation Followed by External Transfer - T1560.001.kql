@@ -1,0 +1,53 @@
+// Title:        Archive Creation Followed by External Transfer
+// Rationale:    Staging data into an archive and then sending it out within a short window is a hallmark of exfiltration.
+//               Correlating the two events on the same device (archive, then a public network connection from a transfer tool within 2 hours) is much higher fidelity than either event alone.
+//               The result is summarised per archive event to avoid join row multiplication.
+// MITRE ATT&CK: T1560.001 (Archive via Utility)
+//               T1074.001 (Local Data Staging)
+//               T1048, T1567.002
+// ----------------------------------------------------------------------------
+let Lookback = 2d;
+let CorrelationWindow = 2h;
+let ArchiveEvents =
+    DeviceProcessEvents
+    | where Timestamp > ago(Lookback)
+    | where (FileName in~ ("7z.exe", "7za.exe", "7zr.exe", "rar.exe", "winrar.exe", "tar.exe", "makecab.exe")
+             and ProcessCommandLine has_any (".zip", ".7z", ".rar", ".tar", ".gz", ".cab"))
+        or (FileName in~ ("powershell.exe", "pwsh.exe")
+            and ProcessCommandLine has "compress-archive")
+    | project DeviceId, DeviceName,
+              ArchiveTime = Timestamp,
+              ArchiveProcess = FileName,
+              ArchiveCommand = ProcessCommandLine,
+              ArchiveAccount = AccountName;
+let TransferEvents =
+    DeviceNetworkEvents
+    | where Timestamp > ago(Lookback)
+    | where RemoteIPType == "Public"
+    | where InitiatingProcessFileName in~ (
+            "rclone.exe", "curl.exe", "wget.exe",
+            "winscp.exe", "pscp.exe", "scp.exe", "sftp.exe",
+            "azcopy.exe", "aws.exe"
+        )
+        or InitiatingProcessVersionInfoOriginalFileName in~ ("rclone.exe", "winscp.exe", "azcopy.exe")
+    | project DeviceId,
+              TransferTime = Timestamp,
+              TransferProcess = InitiatingProcessFileName,
+              TransferCommand = InitiatingProcessCommandLine,
+              TransferAccount = InitiatingProcessAccountName,
+              RemoteIP, RemoteUrl, RemotePort;
+ArchiveEvents
+| join kind=inner TransferEvents on DeviceId
+| where TransferTime between (ArchiveTime .. (ArchiveTime + CorrelationWindow))
+// ---- Tune exclusions here ----
+// | where ArchiveAccount !in~ ("<known_packaging_service_account>")
+| summarize
+    TransferEventCount = count(),
+    FirstTransfer = min(TransferTime),
+    TransferProcesses = make_set(TransferProcess, 5),
+    TransferCommands = make_set(TransferCommand, 3),
+    RemoteIPs = make_set(RemoteIP, 10),
+    RemoteUrls = make_set(RemoteUrl, 10),
+    RemotePorts = make_set(RemotePort, 10)
+    by DeviceId, DeviceName, ArchiveTime, ArchiveProcess, ArchiveCommand, ArchiveAccount
+| order by ArchiveTime desc
