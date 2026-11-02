@@ -1,0 +1,27 @@
+// Title:        Large Archive File Creation by Archiving Tools
+// Rationale:    Bulk staging prior to exfiltration commonly produces large archives written by archiving utilities or PowerShell.
+//               A size threshold (≥100 MB) cuts noise from small routine archives.
+// MITRE ATT&CK: T1560.001, T1074.001
+// ----------------------------------------------------------------------------
+let Lookback = 3d;
+let MinSizeBytes = 100 * 1024 * 1024;
+DeviceFileEvents
+| where Timestamp > ago(Lookback)
+| where ActionType == "FileCreated"
+| where FileName endswith ".zip" or FileName endswith ".7z" or FileName endswith ".rar"
+    or FileName endswith ".tar" or FileName endswith ".gz" or FileName endswith ".tgz"
+    or FileName endswith ".cab"
+| where FileSize >= MinSizeBytes
+| where InitiatingProcessFileName in~ (
+        "7z.exe", "7za.exe", "7zr.exe",
+        "rar.exe", "winrar.exe", "tar.exe",
+        "makecab.exe", "powershell.exe", "pwsh.exe"
+    )
+// ---- Tune exclusions here ----
+// | where InitiatingProcessAccountName !in~ ("<backup_service_account>")
+// | where FolderPath !startswith @"<known_backup_staging_path>"
+| project Timestamp, DeviceName, InitiatingProcessAccountName,
+          FileName, FolderPath, FileSize, SHA1,
+          InitiatingProcessFileName, InitiatingProcessCommandLine,
+          InitiatingProcessParentFileName
+| order by FileSize desc
