@@ -1,0 +1,52 @@
+// Title:        Connections to Cloud Storage, File-Sharing and Paste Services
+// Rationale:    Flags endpoints associated with anonymous file-drop sites, paste services and chat platforms commonly abused for exfiltration and C2.
+//               Domains are matched with term-based has_any, which avoids the substring false positives of contains (e.g. t.me matching client.messaging.adobe, or file.io matching sharefile.io).
+//               Sanctioned services (Dropbox, Google Drive, OneDrive/SharePoint, Box) are intentionally left out to keep volume manageable; an optional block is included.
+// MITRE ATT&CK: T1567.002, T1567.003 (Exfil to Text Storage Sites)
+//               T1567, T1102 (Web Service)
+// ----------------------------------------------------------------------------
+let Lookback = 7d;
+DeviceNetworkEvents
+| where Timestamp > ago(Lookback)
+| where isnotempty(RemoteUrl)
+| extend Service = case(
+    RemoteUrl has_any ("mega.nz", "mega.io", "mega.co.nz"), "MEGA",
+    RemoteUrl has "mediafire.com", "MediaFire",
+    RemoteUrl has_any ("wetransfer.com", "we.tl"), "WeTransfer",
+    RemoteUrl has "transfernow.net", "TransferNow",
+    RemoteUrl has "gofile.io", "Gofile",
+    RemoteUrl has "file.io", "File.io",
+    RemoteUrl has "pixeldrain.com", "Pixeldrain",
+    RemoteUrl has "sendspace.com", "Sendspace",
+    RemoteUrl has "wormhole.app", "Wormhole",
+    RemoteUrl has "transfer.sh", "Transfer.sh",
+    RemoteUrl has "tmpfiles.org", "Tmpfiles",
+    RemoteUrl has "catbox.moe", "Catbox",
+    RemoteUrl has "0x0.st", "0x0.st",
+    RemoteUrl has_any ("filebin.net", "ufile.io", "bashupload.com", "temp.sh", "oshi.at"), "Anonymous file drop",
+    RemoteUrl has_any ("pastebin.com", "paste.ee", "rentry.co"), "Paste service",
+    RemoteUrl has_any ("discord.com", "discordapp.com"), "Discord",
+    RemoteUrl has_any ("telegram.org", "t.me"), "Telegram",
+    // Optional sanctioned services (enable for strict environments):
+    // RemoteUrl has "dropbox.com", "Dropbox",
+    // RemoteUrl has_any ("drive.google.com", "docs.google.com"), "Google Drive",
+    // RemoteUrl has_any ("onedrive.live.com", "1drv.ms"), "OneDrive",
+    // RemoteUrl has "box.com", "Box",
+    ""
+)
+| where isnotempty(Service)
+// ---- Tune exclusions here ----
+// | where InitiatingProcessFileName !in~ ("<approved_client>.exe")
+// | where RemoteUrl !has_any ("<trusted_domain_1>", "<trusted_domain_2>")
+| summarize
+    FirstSeen = min(Timestamp),
+    LastSeen = max(Timestamp),
+    Events = count(),
+    RemoteUrls = make_set(RemoteUrl, 10),
+    RemoteIPs = make_set(RemoteIP, 10),
+    RemotePorts = make_set(RemotePort, 10),
+    ActionTypes = make_set(ActionType, 10),
+    ProcessCommands = make_set(InitiatingProcessCommandLine, 5)
+    by DeviceId, DeviceName, InitiatingProcessAccountName,
+       InitiatingProcessFileName, Service
+| order by Events desc
