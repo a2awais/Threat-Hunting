@@ -1,0 +1,66 @@
+// Title:          Command-Line Data Exfiltration Utilities
+// Rationale:      Dual-use transfer tools (rclone, WinSCP, curl, AzCopy, AWS/GCloud CLI) are favored by ransomware affiliates and APT operators for exfiltration
+//                 because they are signed or legitimate and blend into admin activity.
+//                 This hunt keys on upload-oriented flags and sub-commands rather than binary presence,
+//                 and also matches on OriginalFileName to catch renamed binaries (rclone is routinely renamed).
+// MITRE ATT&CK:   T1048 (Exfiltration Over Alternative Protocol)
+//                 T1048.002, T1048.003, T1567.002 (Exfil to Cloud Storage)
+//                 T1537 (Transfer to Cloud Account), T1197 (BITS Jobs)
+// ----------------------------------------------------------------------------
+let Lookback = 7d;
+DeviceProcessEvents
+| where Timestamp > ago(Lookback)
+| where FileName in~ (
+        "curl.exe", "wget.exe", "rclone.exe",
+        "winscp.exe", "winscp.com", "pscp.exe", "scp.exe",
+        "sftp.exe", "azcopy.exe", "aws.exe",
+        "gcloud.exe", "ftp.exe", "bitsadmin.exe"
+    )
+    or ProcessVersionInfoOriginalFileName in~ (
+        "rclone.exe", "winscp.exe", "winscp.com", "azcopy.exe", "curl.exe"
+    )
+| where
+    // curl: upload flags (-T / -F / -d @file are case-sensitive, handled via regex)
+    (ProcessCommandLine has "curl"
+        and (ProcessCommandLine has_any ("--upload-file", "--data-binary", "--form")
+             or ProcessCommandLine matches regex @"\s-[TF]\s"
+             or ProcessCommandLine matches regex @"\s-d\s*@"))
+    // wget: POST / PUT of local content
+    or (FileName =~ "wget.exe"
+        and ProcessCommandLine has_any ("--post-file", "--post-data", "--method=put", "--body-file"))
+    // rclone: transfer verbs (also catches renamed binaries via OriginalFileName)
+    or ((FileName =~ "rclone.exe" or ProcessVersionInfoOriginalFileName =~ "rclone.exe")
+        and ProcessCommandLine has_any ("copy", "sync", "move", "copyto", "moveto"))
+    // WinSCP: scripted upload / sync
+    or ((FileName in~ ("winscp.exe", "winscp.com") or ProcessVersionInfoOriginalFileName in~ ("winscp.exe", "winscp.com"))
+        and ProcessCommandLine has_any ("put", "synchronize", "/command", "/script"))
+    // pscp / scp / sftp: batch mode, put, or user@host: remote spec (direction not guaranteed)
+    or (FileName in~ ("pscp.exe", "scp.exe", "sftp.exe")
+        and (ProcessCommandLine has_any ("put", "mput")
+             or ProcessCommandLine matches regex @"\s-b\s"
+             or ProcessCommandLine matches regex @"@[\w\.\-]+:"))
+    // AzCopy
+    or ((FileName =~ "azcopy.exe" or ProcessVersionInfoOriginalFileName =~ "azcopy.exe")
+        and ProcessCommandLine has_any ("copy", "sync"))
+    // AWS CLI
+    or (FileName =~ "aws.exe"
+        and ProcessCommandLine has_any ("s3 cp", "s3 sync", "s3 mv", "put-object"))
+    // gcloud storage
+    or (FileName =~ "gcloud.exe"
+        and ProcessCommandLine has_any ("storage cp", "storage rsync"))
+    // ftp.exe: put / mput or script file (-s:)
+    or (FileName =~ "ftp.exe"
+        and ProcessCommandLine has_any ("put", "mput", "-s:"))
+    // bitsadmin: upload jobs only (/transfer is mostly downloads)
+    or (FileName =~ "bitsadmin.exe"
+        and ProcessCommandLine has_any ("/upload", "/addfile"))
+// ---- Tune exclusions here ----
+// | where InitiatingProcessParentFileName !~ "<known_automation_parent>.exe"
+// | where InitiatingProcessFileName !~ "<known_integration_engine>.exe"
+// | where ProcessCommandLine !has "<trusted_destination_domain>"
+| project Timestamp, DeviceName, AccountName,
+          FileName, ProcessVersionInfoOriginalFileName,
+          ProcessCommandLine, FolderPath, ProcessId,
+          InitiatingProcessFileName, InitiatingProcessCommandLine,
+          InitiatingProcessParentFileName, SHA256, InitiatingProcessSHA256
+| order by Timestamp desc
