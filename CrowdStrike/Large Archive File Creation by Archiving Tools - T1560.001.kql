@@ -1,0 +1,33 @@
+// Hunt:         Large Archive File Creation by Archiving Tools
+// Rationale:    Bulk staging before exfiltration commonly produces large archives written by archiving utilities or PowerShell.
+// MITRE ATT&CK: T1560.001, T1074.001
+// ----------------------------------------------------------------------------
+(
+  // Large archive written
+  (#event_simpleName=/^(Zip|Rar|SevenZip|Tar|Gzip)FileWritten$/ event_platform=Win
+     Size>=104857600)
+  // Archiving-tool process starts
+  or (#event_simpleName=/^(ProcessRollup2|SyntheticProcessRollup2)$/ event_platform=Win
+     FileName=/^(7z|7za|7zr|rar|winrar|tar|makecab|powershell|pwsh)\.exe$/i)
+)
+| case {
+    #event_simpleName=/FileWritten$/
+      | pid := ContextProcessId | ArchivePath := TargetFileName | ArchiveSize := Size;
+    * | pid := TargetProcessId;
+  }
+| groupBy([aid, pid], limit=max, function=[
+    selectLast([ComputerName, UserSid, UserName, ImageFileName, CommandLine, ParentBaseFileName]),
+    count(ArchivePath, as=Archives),
+    sum(ArchiveSize, as=TotalBytes),
+    max(ArchiveSize, as=LargestBytes),
+    collect([ArchivePath], limit=10)
+  ])
+| Archives > 0
+| ImageFileName = *
+// ---- Tune exclusions here ----
+// | UserName!=/<backup_service_account>/i
+// | ArchivePath!=/<known_backup_staging_path>/i
+
+| TotalMB   := TotalBytes / 1048576
+| LargestMB := LargestBytes / 1048576
+| sort(LargestMB, order=desc, limit=2000)
