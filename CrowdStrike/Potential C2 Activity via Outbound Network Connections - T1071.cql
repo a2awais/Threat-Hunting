@@ -55,6 +55,6 @@ defineTable(
 
 | FirstConn := formatTime("%Y-%m-%d %H:%M:%S", field=FirstConnMs)
 | LastConn  := formatTime("%Y-%m-%d %H:%M:%S", field=LastConnMs)
-| table([@timestamp, ComputerName, UserName, UserSid, ImageFileName, ParentBaseFileName, CommandLine,
+| table([@timestamp, ComputerName, UserName, ImageFileName, ParentBaseFileName, CommandLine,
          RemoteIP, RemotePort, Hosts, Conns, DistinctDests, FirstConn, LastConn, SHA256HashData, aid, TargetProcessId],
         sortby=Hosts, order=asc, limit=1000)
