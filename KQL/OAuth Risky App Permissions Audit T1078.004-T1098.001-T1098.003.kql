@@ -1,21 +1,22 @@
-// Risky OAuth App Permissions: App-Only and Delegated
-// Which enabled apps could an attacker use to read mail, plant credentials or
-// escalate privileges, and does anyone still need them?
+//    Risky OAuth App Permissions: App-Only and Delegated
+//    Which enabled apps could an attacker use to read mail, plant credentials or
+//    escalate privileges, and does anyone still need them?
 //
-// App-only = the app signs in as itself: no user, no MFA, tenant-wide reach.
-// Delegated = the app acts as a user and can't exceed that user's rights.
+//    App-only = the app signs in as itself: no user, no MFA, tenant-wide reach.
+//    Delegated = the app acts as a user and can't exceed that user's rights.
 //
-// Review top to bottom: PrivEsc_AppOnly, then DataAccess_AppOnly.
-// "(in use)" = the permission is actually exercised. Inactive 90d+ = easiest to disable.
-// Verified publisher does not mean safe (see ConnectWise/SkyKick).
+//    Review top to bottom: PrivEsc_AppOnly, then DataAccess_AppOnly.
+//    "(in use)" = the permission is actually exercised. Inactive 90d+ = easiest to disable.
+//    Verified publisher does not mean safe (see ConnectWise/SkyKick).
 //
-// Seen in the wild: Midnight Blizzard (2024), ConnectWise/SkyKick (2026)
-// Related (not covered here): Vercel/Context.ai (Google Workspace), OneDrive File Picker scope flaw (Oasis)
-// MITRE: T1078.004, T1098.001, T1098.003 | Requires: app governance in Defender for Cloud Apps
-// Tune: edit the two lists below. OnlyRisky = false lists every enabled app.
-// Risky OAuth App Permissions: App-Only and Delegated
-// Tiers: PrivEsc, then write-capable data access, then read-all data access. Tune the lists below.
-// OnlyRisky = false lists every enabled app.
+//    Seen in the wild: Midnight Blizzard (2024), ConnectWise/SkyKick (2026), todyl | HuntressLabs (2026)
+//    Stolen App Credentials, Real Access: An Actor Is Signing Into Entra ID and Azure DevOps as Your Workloads 
+//    Related (not covered here): Vercel/Context.ai (Google Workspace), OneDrive File Picker scope flaw (Oasis)
+//    MITRE: T1078.004, T1098.001, T1098.003 | Requires: app governance in Defender for Cloud Apps
+//    Tune: edit the two lists below. OnlyRisky = false lists every enabled app.
+//    Risky OAuth App Permissions: App-Only and Delegated
+//    Tiers: PrivEsc, then write-capable data access, then read-all data access. Tune the lists below.
+//    OnlyRisky = false lists every enabled app.
 let OnlyRisky = true;
 let PrivEsc = dynamic(["Application.ReadWrite.All","AppRoleAssignment.ReadWrite.All",
  "RoleManagement.ReadWrite.Directory","Directory.ReadWrite.All",
