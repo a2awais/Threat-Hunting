@@ -13,6 +13,9 @@
 // Related (not covered here): Vercel/Context.ai (Google Workspace), OneDrive File Picker scope flaw (Oasis)
 // MITRE: T1078.004, T1098.001, T1098.003 | Requires: app governance in Defender for Cloud Apps
 // Tune: edit the two lists below. OnlyRisky = false lists every enabled app.
+// Risky OAuth App Permissions: App-Only and Delegated
+// Tiers: PrivEsc, then write-capable data access, then read-all data access. Tune the lists below.
+// OnlyRisky = false lists every enabled app.
 let OnlyRisky = true;
 let PrivEsc = dynamic(["Application.ReadWrite.All","AppRoleAssignment.ReadWrite.All",
  "RoleManagement.ReadWrite.Directory","Directory.ReadWrite.All",
@@ -20,6 +23,7 @@ let PrivEsc = dynamic(["Application.ReadWrite.All","AppRoleAssignment.ReadWrite.
 let DataAccess = dynamic(["Mail.Send","Mail.ReadWrite","MailboxSettings.ReadWrite",
  "Files.ReadWrite.All","Sites.ReadWrite.All","Sites.FullControl.All","AllSites.Write",
  "full_access_as_app","EWS.AccessAsUser.All"]);
+let DataRead = dynamic(["Mail.Read","Files.Read.All","Sites.Read.All"]);
 OAuthAppInfo
 | where Timestamp > ago(35d)                       // full snapshots land twice a month
 | summarize arg_max(Timestamp, *) by OAuthAppId    // latest state per app
@@ -43,6 +47,7 @@ OAuthAppInfo
 | summarize
     PrivEsc_AppOnly = make_set_if(Label, Type == "Application" and Name in~ (PrivEsc)),
     DataAccess_AppOnly = make_set_if(Label, Type == "Application" and Name in~ (DataAccess)),
+    DataRead_AppOnly = make_set_if(Label, Type == "Application" and Name in~ (DataRead)),
     DelegatedHigh = make_set_if(Label, Type == "Delegated" and Level == "High"),
     AllPerms = make_set_if(strcat(Resource, ":", Name, " [", Type, "]"), isnotempty(Name)),
     AppName = take_any(AppName), Publisher = take_any(Publisher), AppOrigin = take_any(AppOrigin),
@@ -55,17 +60,20 @@ OAuthAppInfo
     iff(isempty(Publisher) and AppOrigin =~ "External", DelegatedHigh, dynamic([]))
 | extend ReviewReason = case(
     array_length(PrivEsc_AppOnly) > 0, "App-only rights to escalate privilege or plant credentials",
-    array_length(DataAccess_AppOnly) > 0, "App-only mail / file / site access",
+    array_length(DataAccess_AppOnly) > 0, "App-only mail / file / site access (write-capable)",
     array_length(DelegatedHigh_ExternalUnverified) > 0, "High-privilege consent on external, unverified app",
+    array_length(DataRead_AppOnly) > 0, "App-only read access to mail / files / sites",
     "No risky permissions")
 | where ReviewReason != "No risky permissions" or not(OnlyRisky)
-| extend Activity = case(isnull(LastUsed), "Unknown", LastUsed < ago(90d), "Inactive 90d+", "Active")
-| order by array_length(PrivEsc_AppOnly) desc, array_length(DataAccess_AppOnly) desc, LastModified desc
+| extend Activity = case(isnull(LastUsed), "Unknown", LastUsed < ago(90d), "No sign-in 90d+", "Active")
+| order by array_length(PrivEsc_AppOnly) desc, array_length(DataAccess_AppOnly) desc,
+           array_length(DataRead_AppOnly) desc, LastModified desc
 | project AppName, ReviewReason, Publisher, AppOrigin, AppOwnerTenantId,
           AdminConsented = case(AdminConsented == true, "Yes", AdminConsented == false, "No", "Unknown"),
           Activity, LastUsed = format_datetime(LastUsed, "yyyy-MM-dd"),
           PrivEsc_AppOnly = array_strcat(array_sort_asc(PrivEsc_AppOnly), "; "),
           DataAccess_AppOnly = array_strcat(array_sort_asc(DataAccess_AppOnly), "; "),
+          DataRead_AppOnly = array_strcat(array_sort_asc(DataRead_AppOnly), "; "),
           DelegatedHigh_ExternalUnverified = array_strcat(array_sort_asc(DelegatedHigh_ExternalUnverified), "; "),
           TotalPermissions = array_length(AllPerms),
           AllPermissions = array_strcat(array_sort_asc(AllPerms), "; "),
