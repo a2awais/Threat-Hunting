@@ -1,0 +1,26 @@
+// Hunt:          Azure Entra - New IP Authenticating as Several Service Principals with Failures
+// Rationale:     One IP address authenticating as several apps with mixed success.
+//                In a single tenant, an address that has never been seen before and authenticates as three or more apps in an hour, with at least one failure, is rare for legitimate automation.
+//                Use this as a hunting query rather than an alert, since it needs tuning to your environment.
+//                An IP never seen in the prior 30 days authenticating as 3+ different apps within one hour,
+//                with at least one failure. Excludes managed identities and Azure private IPv6 (fd...).
+// MITRE ATT&CK:  T1078.004 Valid Accounts: Cloud Accounts;
+//                T1550.001 Application Access Token
+// ----------------------------------------------------------------------------
+let Lookback = 1d;   // use 7d for a retro hunt
+let Baseline = EntraIdSpnSignInEvents
+    | where Timestamp between (ago(30d) .. ago(Lookback))
+    | where isnotempty(IPAddress)
+    | distinct IPAddress;
+EntraIdSpnSignInEvents
+| where Timestamp > ago(Lookback)
+| where isnotempty(IPAddress) and not(IPAddress startswith "fd")
+| where isnull(IsManagedIdentity) or IsManagedIdentity == false
+| join kind=leftanti Baseline on IPAddress
+| summarize Apps = dcount(ServicePrincipalId), Failures = countif(ErrorCode != 0),
+            Successes = countif(ErrorCode == 0), AppNames = make_set(ServicePrincipalName, 10),
+            Resources = make_set(ResourceDisplayName, 10), UserAgents = make_set(UserAgent, 5),
+            First = min(Timestamp), Last = max(Timestamp)
+            by IPAddress, Hour = bin(Timestamp, 1h)
+| where Apps >= 3 and Failures >= 1
+| order by Apps desc, Failures desc
