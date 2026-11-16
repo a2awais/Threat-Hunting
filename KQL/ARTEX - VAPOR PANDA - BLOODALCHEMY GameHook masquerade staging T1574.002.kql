@@ -1,0 +1,26 @@
+// Title:        ARTEX - VAPOR PANDA - BLOODALCHEMY GameHook masquerade staging
+// Rationale:    A svchost.exe is only suspicious when it runs outside System32/SysWOW64, and the reported companion files resemble legitimate capture software.
+//               Requiring both in the same folder removes each signal's standalone false positives.
+// MITRE ATT&CK: (Masquerading: Match Legitimate Name or Location), T1574.002 (DLL Side-Loading)
+// svchost.exe running outside system dirs + GameHook-style companion files in the same folder
+let lookback = 30d;
+union
+(
+    DeviceProcessEvents
+    | where Timestamp > ago(lookback)
+    | where FileName =~ "svchost.exe"
+    | where FolderPath !startswith @"C:\Windows\System32\" and FolderPath !startswith @"C:\Windows\SysWOW64\"
+    | project Timestamp, DeviceId, DeviceName, Marker = "svchost_outside_system",
+              Dir = tostring(parse_path(FolderPath).DirectoryPath)
+),
+(
+    DeviceFileEvents
+    | where Timestamp > ago(lookback)
+    | where FileName in~ ("graphics-hook-filter64.dll", "graphics-hook_config.bin")
+    | where ActionType in ("FileCreated", "FileModified", "FileRenamed")
+    | project Timestamp, DeviceId, DeviceName, Marker = tolower(FileName),
+              Dir = tostring(parse_path(FolderPath).DirectoryPath)
+)
+| summarize Markers = make_set(Marker), First = min(Timestamp), Last = max(Timestamp) by DeviceId, DeviceName, Dir
+| where set_has_element(Markers, "svchost_outside_system") and array_length(Markers) >= 2
+| order by Last desc
