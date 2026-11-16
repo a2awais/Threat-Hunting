@@ -1,0 +1,18 @@
+// Title:         ARTEX - Database engine writing a server-side script file - web shell planting
+// Rationale:     The reported route from database access to code execution ends with the database engine itself writing a script file, with MySQL logging pointed at a .jsp in a web path.
+//                Database engines write data, logs and dumps, not server-side scripts, so the DB-engine initiator plus script extension is near-binary.
+//                The extension is matched in any directory, and InWebPath only ranks results. Repeated writes to one file (agent compile-retry loops) raise confidence.
+// MITRE ATT&CK:  T1505.003 (Server Software Component: Web Shell), T1190 (Exploit Public-Facing Application)
+// Ref:           https://cloud.google.com/blog/en/topics/threat-intelligence/artex-and-friends-enter-agentic-offensive-frameworks
+// Ref:           https://gbhackers.com/artex-ai-agents/amp/
+let lookback = 30d;
+DeviceFileEvents
+| where Timestamp > ago(lookback)
+| where ActionType in ("FileCreated", "FileModified", "FileRenamed")
+| where InitiatingProcessFileName in~ ("mysqld", "mysqld.exe", "mysqld-nt.exe",
+                                       "mariadbd", "mariadbd.exe", "postgres", "postgres.exe")
+| where FileName matches regex @"(?i)\.(jsp|jspx|php\d?|phtml|asp|aspx|ashx|cfm)$"
+| extend InWebPath = FolderPath matches regex @"(?i)(webapps|wwwroot|htdocs|inetpub|/var/www|/ROOT/|public_html)"
+| project Timestamp, DeviceName, ActionType, FileName, FolderPath, InWebPath, SHA256,
+          InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessAccountName
+| order by InWebPath desc, Timestamp desc
