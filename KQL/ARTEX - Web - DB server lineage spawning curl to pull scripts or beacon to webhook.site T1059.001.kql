@@ -1,0 +1,20 @@
+// Title:         ARTEX - Web - DB server lineage spawning curl to pull scripts or beacon to webhook.site
+// Rationale:     The reported pattern is native curl launched from cmd or a web process to pull scripts.
+//                Requiring the full chain (server-side parent, shell, curl/wget, URL, script extension or webhook.site) removes the admin and developer noise that a bare "cmd launching curl" rule produces.
+//                Trade-off: it misses curl launched outside a server lineage, so broaden only after baselining.
+// MITRE ATT&CK:  T1059.001 / T1059.003 (PowerShell / Windows Command Shell), T1105 (Ingress Tool Transfer), T1190
+// Server-side process -> shell -> curl/wget fetching a script or hitting webhook.site
+let lookback = 30d;
+let ServerProcs = dynamic(["w3wp.exe", "httpd.exe", "httpd", "nginx.exe", "nginx", "php-cgi.exe", "php-fpm",
+                           "tomcat8.exe", "tomcat9.exe", "tomcat10.exe", "java.exe", "java",
+                           "sqlservr.exe", "mysqld.exe", "mysqld", "mariadbd.exe", "mariadbd"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName in~ ("curl.exe", "curl", "wget.exe", "wget")
+| where InitiatingProcessFileName in~ ("cmd.exe", "powershell.exe", "pwsh.exe", "sh", "bash", "dash")
+| where InitiatingProcessParentFileName in~ (ServerProcs)
+| where ProcessCommandLine matches regex @"(?i)https?://"
+| where ProcessCommandLine matches regex @"(?i)(\.(ps1|bat|cmd|vbs|py|sh)\b|webhook\.site)"
+| project Timestamp, DeviceName, AccountName, ProcessCommandLine,
+          InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessParentFileName
+| order by Timestamp desc
