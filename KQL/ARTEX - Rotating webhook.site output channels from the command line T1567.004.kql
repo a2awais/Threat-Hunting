@@ -1,0 +1,20 @@
+// Title:        ARTEX - Rotating webhook.site output channels from the command line
+// Rationale:    Agents reportedly rotate hundreds of webhook.site endpoints to return command output (491 in one intrusion), while a human tester reuses one URL.
+//               The distinct-ID count per device per hour separates rotation from single dev or test use.
+//               The ID is extracted from the command line because HTTPS RemoteUrl rarely carries the path.
+//               Raise the threshold on hosts that legitimately test webhooks.
+// MITRE ATT&CK:  T1567.004 (Exfiltration Over Webhook), T1059
+// >=3 distinct webhook.site IDs from CLI tooling on one device within an hour
+let lookback = 30d;
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where ProcessCommandLine has "webhook.site"
+| where FileName in~ ("curl.exe", "curl", "wget.exe", "wget", "powershell.exe", "pwsh.exe",
+                      "python.exe", "python", "python3", "cmd.exe", "bash", "sh")
+| extend HookId = extract(@"(?i)webhook\.site/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})", 1, ProcessCommandLine)
+| where isnotempty(HookId)
+| summarize DistinctHooks = dcount(HookId), Executions = count(),
+            First = min(Timestamp), Last = max(Timestamp), Samples = make_set(ProcessCommandLine, 3)
+    by DeviceId, DeviceName, AccountName, Window = bin(Timestamp, 1h)
+| where DistinctHooks >= 3
+| order by DistinctHooks desc
