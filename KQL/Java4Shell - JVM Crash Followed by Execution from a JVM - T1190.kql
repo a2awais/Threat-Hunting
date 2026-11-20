@@ -1,0 +1,24 @@
+// Title:        Java4Shell - JVM Crash Followed by Execution from a JVM
+// Rationale:    Lists processes a JVM started on any host where a JVM crashed, from the first crash until 6 hours after the last one.
+//               This matches the crash-and-retry pattern before RCE succeeds.
+//               Shells are listed only when they run an inline or interactive command, so CI build steps that run script files are excluded.
+// MITRE ATT&CK: T1190, T1203, T1499.004, T1059.004, T1059.001
+// ----------------------------------------------------------------------------
+let JavaProcs = dynamic(["java","java.exe","javaw.exe"]);
+let Shells = dynamic(["sh","bash","dash","zsh","busybox","cmd.exe","powershell.exe","pwsh.exe"]);
+let Tools = dynamic(["curl","wget","nc","ncat","socat","python","python3","perl","whoami","id","uname","hostname",
+                     "whoami.exe","net.exe","nltest.exe","systeminfo.exe","certutil.exe","bitsadmin.exe","mshta.exe","rundll32.exe"]);
+let Crashes = DeviceFileEvents
+    | where Timestamp > ago(14d)
+    | where FileName startswith "hs_err_pid" and InitiatingProcessFileName in~ (JavaProcs)
+    | summarize CrashCount = count(), FirstCrash = min(Timestamp), LastCrash = max(Timestamp) by DeviceId;
+DeviceProcessEvents
+| where Timestamp > ago(14d)
+| where InitiatingProcessFileName in~ (JavaProcs)
+| where FileName in~ (Tools)
+    or (FileName in~ (Shells) and ProcessCommandLine matches regex @'(?i)\s(-c|-i|/c|/k|-enc|-command)(\s|$)')
+| join kind=inner Crashes on DeviceId
+| where Timestamp between (FirstCrash .. (LastCrash + 6h))
+| project Timestamp, DeviceName, AccountName, CrashCount, FirstCrash, LastCrash,
+          InitiatingProcessCommandLine, FileName, ProcessCommandLine, SHA256
+| order by DeviceName asc, Timestamp asc
