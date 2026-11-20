@@ -1,0 +1,12 @@
+// Title:        Java4Shell - JVM Spawning Reverse Shell or Stager
+// Rationale:    A JVM directly runs a command with reverse-shell, download and execute, base64 to shell or encoded PowerShell syntax.
+//               This catches RCE that succeeds on the first attempt, without a crash.
+// MITRE ATT&CK: T1059.004, T1059.001, T1105
+// ----------------------------------------------------------------------------
+DeviceProcessEvents
+| where Timestamp > ago(14d)
+| where InitiatingProcessFileName in~ ("java","java.exe","javaw.exe")
+| where ProcessCommandLine matches regex @'(?i)(/dev/(tcp|udp)/|mkfifo|(ba)?sh -i|nc(at)? .*-e |socat .*exec|base64 (-d|--decode)|\|\s*(ba)?sh\b|(curl|wget) .*(/tmp/|/dev/shm/)|downloadstring|iex\s*\(|invoke-webrequest|-urlcache|bitsadmin.*/transfer|-e(nc|ncodedcommand)? [a-z0-9+/=]{40,})'
+| project Timestamp, DeviceName, AccountName, FileName, ProcessCommandLine,
+          InitiatingProcessCommandLine, InitiatingProcessFolderPath, SHA256
+| order by Timestamp desc
