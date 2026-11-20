@@ -3,6 +3,7 @@
 //               This matches the crash-and-retry pattern before RCE succeeds.
 //               Shells are listed only when they run an inline or interactive command, so CI build steps that run script files are excluded.
 // MITRE ATT&CK: T1190, T1203, T1499.004, T1059.004, T1059.001
+// Ref: https://calif.io/java4shell
 // ----------------------------------------------------------------------------
 let JavaProcs = dynamic(["java","java.exe","javaw.exe"]);
 let Shells = dynamic(["sh","bash","dash","zsh","busybox","cmd.exe","powershell.exe","pwsh.exe"]);
