@@ -1,0 +1,13 @@
+// Title:        Java4Shell - JVM Writing Web Shell or Persistence
+// Rationale:    Hunt: A JVM writes a JSP file (web shell) or writes to SSH, cron, systemd, ld.so.preload, rc.local, profile.d or the Windows Startup folder.
+// MITRE ATT&CK: T1505.003, T1098.004, T1053.003, T1543.002, T1547.001
+// ----------------------------------------------------------------------------
+DeviceFileEvents
+| where Timestamp > ago(14d)
+| where InitiatingProcessFileName in~ ("java","java.exe","javaw.exe")
+| where ActionType in ("FileCreated","FileModified","FileRenamed")
+| where FileName matches regex @'(?i)\.jsp[xf]?$'
+    or FolderPath matches regex @'(?i)(/\.ssh/authorized_keys|/etc/cron|/var/spool/cron/|/etc/systemd/system/|/etc/ld\.so\.preload|/etc/rc\.local|/etc/profile\.d/|\\Start Menu\\Programs\\Startup\\)'
+| project Timestamp, DeviceName, ActionType, FolderPath, SHA256,
+          InitiatingProcessAccountName, InitiatingProcessCommandLine
+| order by Timestamp desc
