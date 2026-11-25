@@ -1,4 +1,3 @@
-// ----------------------------------------------------------------------------
 // Mirage Kitten NightLedger NightLedger — NetSetup.log Targeted Collection for AD Reconnaissance
 // Rationale:   Detects NightLedger Command 93, which collects
 //              C:\Windows\debug\NetSetup.log alongside a process listing and
@@ -10,9 +9,7 @@
 //              timestamps — high-value AD recon for an espionage actor.
 // MITRE ATT&CK: T1082 — System Information Discovery
 //               T1005 — Data from Local System
-// SEVERITY:    High
 // ----------------------------------------------------------------------------
-
 DeviceProcessEvents
 | where Timestamp > ago(30d)
 | where ProcessCommandLine has_all ("NetSetup.log", @"C:\Windows\debug")
