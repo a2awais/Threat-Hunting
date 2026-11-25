@@ -1,0 +1,19 @@
+// Title:         Command Output Redirected to Actor Working Files
+// Rationale:     Volant Manticore's backdoors don't return command output directly.
+//                Homa runs cmd.exe /c <cmd> > C:\Users\Public\outputt2.txt, and KuboShell operators redirect to C:\Users\Public\<MAC>re.txt,
+//                then upload the file. This hunts shells that write output to those files.
+//                ProcessCommandLine shows the operator's exact command.
+// MITRE ATT&CK:  T1059.003, T1059.001
+// Ref:           https://research.checkpoint.com/2026/volant-manticore-flying-under-the-radar/
+// ----------------------------------------------------------------------------
+let Lookback = 30d;
+DeviceProcessEvents
+| where Timestamp > ago(Lookback)
+| where FileName in~ ("cmd.exe", "powershell.exe", "pwsh.exe")
+| where ProcessCommandLine has "outputt2.txt"
+     or ProcessCommandLine matches regex @"(?i)users\\public\\([0-9a-f]{2}-?){5}[0-9a-f]{2}re\.txt"
+| project Timestamp, DeviceId, DeviceName, ReportId, AccountDomain, AccountName,
+          FileName, ProcessCommandLine, ProcessId,
+          InitiatingProcessFileName, InitiatingProcessFolderPath, InitiatingProcessSHA256,
+          InitiatingProcessCommandLine, InitiatingProcessId,
+          InitiatingProcessParentFileName, InitiatingProcessParentId
