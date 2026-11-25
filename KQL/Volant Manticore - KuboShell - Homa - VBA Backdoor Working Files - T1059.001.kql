@@ -1,0 +1,24 @@
+// Title:          KuboShell / Homa / VBA Backdoor Working Files
+// Rationale:      Description: Volant Manticore's backdoors write hard-coded working files to shared folders:
+//                 KuboShell: C:\Users\Public\<MAC>.log (check-in) and <MAC>re.txt (command output)
+//                 Homa backdoor: C:\Users\Public\outputt2.txt
+//                 Word VBA backdoor: C:\ProgramData\UiAutomation.txt
+//                 This hunts those file names, created only in the root of those folders.
+//                 The process that wrote the file is the implant or its shell; pivot on InitiatingProcessSHA256.
+// MITRE ATT&CK:  T1059.001, T1059.003, T1074.001
+// Ref:            https://research.checkpoint.com/2026/volant-manticore-flying-under-the-radar/
+// ----------------------------------------------------------------------------
+let Lookback = 30d;
+DeviceFileEvents
+| where Timestamp > ago(Lookback)
+| where ActionType in ("FileCreated", "FileModified")
+| where FolderPath startswith @"C:\Users\Public\" or FolderPath startswith @"C:\ProgramData\"
+| where (FolderPath =~ strcat(@"C:\Users\Public\", FileName)
+         and (FileName =~ "outputt2.txt"
+              or FileName matches regex @"(?i)^([0-9a-f]{2}-?){5}[0-9a-f]{2}(re)?\.(log|txt)$"))
+     or FolderPath =~ @"C:\ProgramData\UiAutomation.txt"
+| project Timestamp, DeviceId, DeviceName, ReportId, ActionType, FolderPath, FileName, SHA256,
+          InitiatingProcessAccountDomain, InitiatingProcessAccountName,
+          InitiatingProcessFileName, InitiatingProcessFolderPath, InitiatingProcessSHA256,
+          InitiatingProcessCommandLine, InitiatingProcessId,
+          InitiatingProcessParentFileName, InitiatingProcessParentId
