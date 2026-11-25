@@ -1,0 +1,25 @@
+// Title:          Recon via PowerShell/cmd Spawned by a Binary in a User-Writable Path
+// Rationale:      Volant Manticore operators use KuboShell for hands-on recon: quser, whoami, ipconfig, route print, netstat -nat, nslookup -q=srv _kerberos._tcp, net group "domain admins" /domain.
+//                 This hunts PowerShell or cmd running these commands when launched by a program in Downloads, Temp, Desktop or Public.
+//                 That's where lure-delivered implants run from, unlike admin tools. Includes the parent program's signer.
+// MITRE ATT&CK:   MITRE: T1033, T1016, T1049, T1069.002, T1482
+// Ref:            https://research.checkpoint.com/2026/volant-manticore-flying-under-the-radar/
+// ----------------------------------------------------------------------------
+let Lookback = 30d;
+DeviceProcessEvents
+| where Timestamp > ago(Lookback)
+| where FileName in~ ("powershell.exe", "pwsh.exe", "cmd.exe")
+| where InitiatingProcessFolderPath has_any (@"\Downloads\", @"\AppData\Local\Temp\", @"\Desktop\", @"\Users\Public\")
+| where InitiatingProcessFileName !in~ ("powershell.exe", "pwsh.exe", "cmd.exe")
+| where ProcessCommandLine has_any ("quser", "whoami", "route print", "netstat", "_kerberos._tcp", "domain admins", "ipconfig")
+| project Timestamp, DeviceId, DeviceName, ReportId, AccountDomain, AccountName,
+          FileName, ProcessCommandLine, ProcessId,
+          InitiatingProcessFileName, InitiatingProcessFolderPath, InitiatingProcessSHA256, InitiatingProcessSHA1,
+          InitiatingProcessCommandLine, InitiatingProcessId,
+          InitiatingProcessParentFileName, InitiatingProcessParentId
+| lookup kind=leftouter (
+    DeviceFileCertificateInfo
+    | where Timestamp > ago(Lookback)
+    | summarize arg_max(Timestamp, IsSigned, IsTrusted, Signer) by SHA1
+    | project SHA1, IsSigned, IsTrusted, Signer
+  ) on $left.InitiatingProcessSHA1 == $right.SHA1
