@@ -1,5 +1,3 @@
-// =============================================================================
-// Ref: https://securelist.com/mirage-kitten-new-tools/120811/
 // Mirage Kitten NightLedger Backdoor: DLL Search-Order Hijack (SspiCli.dll via AppVShNotify.exe)
 // Rationale:   Detects NightLedger's delivery mechanism: the implant is
 //              compiled as a malicious SspiCli.dll and co-located with
@@ -11,9 +9,8 @@
 //              canonical Windows system paths is a binary-confidence indicator
 //              with near-zero false positive rate in production environments.
 // MITRE: T1574.001 — DLL Search Order Hijacking
-// Severity: CRITICAL
+// Ref: https://securelist.com/mirage-kitten-new-tools/120811/
 // =============================================================================
-
 DeviceImageLoadEvents
 | where Timestamp > ago(30d)
 | where FileName =~ "SspiCli.dll"
