@@ -1,0 +1,20 @@
+// Title:          Word Connects Directly to Public IP on Non-Standard Port
+// Rationale:      Volant Manticore's Word VBA backdoor contacts its C2 every 20 seconds over plain HTTP, straight to an IP on a high port (seen: 185.205.187[.]108:25498).
+//                 This hunts WINWORD.EXE connecting to a public IP with no hostname on a port other than 80/443, so it still works after the C2 moves.
+//                 Results are grouped per destination; a high Connections count means beaconing.
+// MITRE ATT&CK:   T1071.001, T1204.002
+// Ref:            https://research.checkpoint.com/2026/volant-manticore-flying-under-the-radar/
+// ----------------------------------------------------------------------------
+let Lookback = 30d;
+DeviceNetworkEvents
+| where Timestamp > ago(Lookback)
+| where InitiatingProcessFileName =~ "winword.exe"
+| where ActionType == "ConnectionSuccess"
+| where RemoteIPType == "Public"
+| where RemotePort !in (80, 443)
+| where isempty(RemoteUrl)
+| summarize arg_max(Timestamp, ReportId, LocalIP, InitiatingProcessCommandLine, InitiatingProcessId,
+                    InitiatingProcessParentFileName),
+            FirstSeen = min(Timestamp), Connections = count()
+    by DeviceId, DeviceName, InitiatingProcessAccountDomain, InitiatingProcessAccountName,
+       RemoteIP, RemotePort, Protocol
