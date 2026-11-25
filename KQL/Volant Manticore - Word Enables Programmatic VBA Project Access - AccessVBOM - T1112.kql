@@ -1,0 +1,21 @@
+// Title:          Volant Manticore - Word Enables Programmatic VBA Project Access (AccessVBOM)
+// Rationale:      Volant Manticore's Word lure (MilitaryHeritageProposal.doc) runs a VBA macro that sets AccessVBOM = 1,
+//                 which lets it inject a second-stage macro into a hidden Word instance. This hunts WINWORD.EXE itself writing that value.
+//                 Legitimate changes come from GPO or the Trust Center, not from Word at runtime.
+//                 The opened document is in InitiatingProcessCommandLine.
+// MITRE ATT&CK:   T1112, T1204.002, T1059.005
+// Ref:            https://research.checkpoint.com/2026/volant-manticore-flying-under-the-radar/
+// ----------------------------------------------------------------------------
+let Lookback = 30d;
+DeviceRegistryEvents
+| where Timestamp > ago(Lookback)
+| where ActionType == "RegistryValueSet"
+| where RegistryValueName =~ "AccessVBOM"
+| where RegistryValueData == "1"
+| where RegistryKey has_all ("Word", "Security") and RegistryKey !has "Policies"
+| where InitiatingProcessFileName =~ "winword.exe"
+| project Timestamp, DeviceId, DeviceName, ReportId,
+          InitiatingProcessAccountDomain, InitiatingProcessAccountName,
+          RegistryKey, RegistryValueName, RegistryValueData, PreviousRegistryValueData,
+          InitiatingProcessCommandLine, InitiatingProcessId,
+          InitiatingProcessParentFileName, InitiatingProcessParentId
