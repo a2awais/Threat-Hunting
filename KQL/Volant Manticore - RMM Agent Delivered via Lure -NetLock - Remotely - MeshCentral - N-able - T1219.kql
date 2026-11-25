@@ -1,0 +1,28 @@
+// Title:          RMM Agent Delivered via Lure (NetLock / Remotely / MeshCentral / N-able)
+// Rationale:      Volant Manticore keeps remote access by installing legitimate remote-management tools (NetLock, Remotely, MeshCentral, N-able) on victims, connected to servers the actor runs.
+//                 They arrive through ZIP lures (Excel Online.zip, Madinati-Platform.exe) or through KuboShell (Install-Remotely.ps1).
+//                 This hunts these tools' installers run from Downloads, Temp, Desktop or Public, plus the Remotely install script.
+//                 Sanctioned tools are pushed by IT, not run from user folders. Product-name strings are best-effort.
+// MITRE ATT&CK:   T1219, T1105, T1204.002
+// Ref:            https://research.checkpoint.com/2026/volant-manticore-flying-under-the-radar/
+// ----------------------------------------------------------------------------
+let Lookback = 30d;
+let UserWritable = dynamic([@"\Downloads\", @"\AppData\Local\Temp\", @"\Desktop\", @"\Users\Public\"]);
+DeviceProcessEvents
+| where Timestamp > ago(Lookback)
+| where ProcessCommandLine has_any ("Install-Remotely.ps1", "ClientDownloads/WindowsInstaller")
+     or (FolderPath has_any (UserWritable)
+         and (ProcessVersionInfoProductName has_any ("NetLock", "Remotely", "MeshCentral", "Mesh Agent", "N-able")
+              or ProcessVersionInfoCompanyName has_any ("NetLock", "N-able")
+              or FileName has "NetLock"))
+| project Timestamp, DeviceId, DeviceName, ReportId, AccountDomain, AccountName,
+          FileName, FolderPath, SHA256, SHA1, ProcessCommandLine, ProcessId,
+          ProcessVersionInfoProductName, ProcessVersionInfoCompanyName,
+          InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessId,
+          InitiatingProcessParentFileName
+| lookup kind=leftouter (
+    DeviceFileCertificateInfo
+    | where Timestamp > ago(Lookback)
+    | summarize arg_max(Timestamp, IsSigned, IsTrusted, Signer) by SHA1
+    | project SHA1, IsSigned, IsTrusted, Signer
+  ) on SHA1
