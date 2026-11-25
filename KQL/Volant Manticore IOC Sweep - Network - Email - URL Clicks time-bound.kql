@@ -1,0 +1,40 @@
+// Title:          IOC Sweep — Network, Email, URL Clicks (time-bound)
+// Rationale:      A look-back for Volant Manticore's published infrastructure (Check Point Research, 2026):
+//                 backdoor and remote-access C2, phishing look-alikes of OWA, airline ADFS and telco logins, news-themed domains, and sender addresses. It searches network, email and URL-click tables;
+//                 SourceTable shows which one hit. Use it for scoping only, because indicators go stale.
+// MITRE ATT&CK:   T1071.001, T1219, T1566, T1056.003
+// Ref:            https://research.checkpoint.com/2026/volant-manticore-flying-under-the-radar/
+// ----------------------------------------------------------------------------
+let Lookback = 90d;
+let IocDomains = dynamic(["gatewaynet.site","medochomie.com","aegeneair.com","cabelenet.com","primtel-tel.com",
+    "primetel-tel.com","gapgroups.com","cnpcyprus.net","webmail-eac.com","dpwords.com","websitegate.net",
+    "portal-gateway.net","corenewsnetwork.com","liveupdatenews.net"]);
+let IocIPs = dynamic(["185.205.187.107","185.205.187.108","185.205.187.109","185.106.102.70","185.221.222.185",
+    "95.182.88.89","185.253.118.221","88.119.170.218","88.119.171.245","213.252.232.131","213.252.245.44",
+    "213.252.245.60","217.60.5.55","217.60.5.75","217.60.5.87","45.38.170.31","192.142.46.141","94.126.227.67"]);
+let IocSenders = dynamic(["mahaalazami@protonmail.com","u0138738662@proton.me"]);
+union withsource=SourceTable
+(DeviceNetworkEvents
+ | where Timestamp > ago(Lookback)
+ | extend RemoteIP = replace_string(RemoteIP, "::ffff:", "")
+ | where RemoteIP in (IocIPs) or RemoteUrl has_any (IocDomains)
+ | project Timestamp, DeviceId, DeviceName, ReportId, ActionType, RemoteIP, RemotePort, RemoteUrl,
+           InitiatingProcessAccountUpn, InitiatingProcessFileName, InitiatingProcessFolderPath,
+           InitiatingProcessSHA256, InitiatingProcessCommandLine, InitiatingProcessParentFileName),
+(EmailUrlInfo
+ | where Timestamp > ago(Lookback)
+ | where UrlDomain has_any (IocDomains)
+ | join kind=inner (EmailEvents | where Timestamp > ago(Lookback)
+     | project NetworkMessageId, SenderFromAddress, SenderIPv4, RecipientEmailAddress, Subject,
+               DeliveryAction, DeliveryLocation, ThreatTypes) on NetworkMessageId
+ | project Timestamp, ReportId, NetworkMessageId, Url, UrlDomain, SenderFromAddress, SenderIPv4,
+           RecipientEmailAddress, Subject, DeliveryAction, DeliveryLocation, ThreatTypes),
+(EmailEvents
+ | where Timestamp > ago(Lookback)
+ | where SenderFromAddress in~ (IocSenders) or SenderIPv4 in (IocIPs)
+ | project Timestamp, ReportId, NetworkMessageId, SenderFromAddress, SenderIPv4, RecipientEmailAddress,
+           Subject, DeliveryAction, DeliveryLocation, ThreatTypes),
+(UrlClickEvents
+ | where Timestamp > ago(Lookback)
+ | where Url has_any (IocDomains)
+ | project Timestamp, ReportId, NetworkMessageId, AccountUpn, Url, ActionType, IsClickedThrough, IPAddress, Workload)
