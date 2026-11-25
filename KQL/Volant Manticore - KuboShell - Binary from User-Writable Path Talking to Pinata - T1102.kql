@@ -1,0 +1,24 @@
+// Title:         KuboShell — Binary from User-Writable Path Talking to Pinata
+// Rationale:     Volant Manticore's KuboShell backdoor uses Pinata, an IPFS file-hosting service, as its C2.
+//                It checks in, fetches commands and uploads output there every 60 seconds.
+//                It arrives in ZIP lures (Athena Marinou-CV.exe, AI_Healthcare_Seminar.exe) and runs from the user's folders.
+//                This hunts programs in Downloads, Temp, Desktop or Public that connect to Pinata, and adds the program's signer.
+// MITRE ATT&CK:  T1102, T1071.001, T1204.002
+// Ref:           https://research.checkpoint.com/2026/volant-manticore-flying-under-the-radar/
+// ----------------------------------------------------------------------------
+let Lookback = 30d;
+DeviceNetworkEvents
+| where Timestamp > ago(Lookback)
+| where RemoteUrl has_any ("pinata.cloud", "mypinata.cloud")
+| where InitiatingProcessFolderPath has_any (@"\Downloads\", @"\AppData\Local\Temp\", @"\Desktop\", @"\Users\Public\")
+| summarize arg_max(Timestamp, ReportId, InitiatingProcessCommandLine, InitiatingProcessId,
+                    InitiatingProcessParentFileName),
+            FirstSeen = min(Timestamp), Connections = count(), RemoteUrls = make_set(RemoteUrl, 10)
+    by DeviceId, DeviceName, InitiatingProcessAccountDomain, InitiatingProcessAccountName,
+       InitiatingProcessFileName, InitiatingProcessFolderPath, InitiatingProcessSHA256, InitiatingProcessSHA1
+| lookup kind=leftouter (
+    DeviceFileCertificateInfo
+    | where Timestamp > ago(Lookback)
+    | summarize arg_max(Timestamp, IsSigned, IsTrusted, Signer) by SHA1
+    | project SHA1, IsSigned, IsTrusted, Signer
+  ) on $left.InitiatingProcessSHA1 == $right.SHA1
