@@ -1,4 +1,3 @@
-// ----------------------------------------------------------------------------
 // Mirage Kitten NightLedger — Logical Drive Enumeration Spawned from DLL-Load Context
 // Rationale:   Detects NightLedger Command 75, which enumerates logical drives
 //              as a pre-exfiltration reconnaissance step — identifying available
@@ -13,7 +12,6 @@
 //               T1082 — System Information Discovery
 // SEVERITY:    Medium — treat as high if parent process is AppVShNotify.exe
 // ----------------------------------------------------------------------------
-
 DeviceProcessEvents
 | where Timestamp > ago(7d)
 | where ProcessCommandLine has_any (
