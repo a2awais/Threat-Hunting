@@ -2,6 +2,8 @@
 // Rationale:     Description: Finds PowerShell pulling content from a bare IP address and running it in memory.
 //                It also catches iex built from $PSSessionConfigurationName, which Homa Stage 1 uses.
 // MITRE ATT&CK:  T1059.001, T1105, T1027
+// Ref:           https://research.checkpoint.com/2026/volant-manticore-flying-under-the-radar/
+//                https://blog.checkpoint.com/security/volant-manticore-new-iranian-threat-group-expands-cyber-espionage-across-europe-and-the-middle-east/
 // ----------------------------------------------------------------------------
 #event_simpleName=ProcessRollup2 event_platform=Win
 | ImageFileName=/\\(powershell|pwsh)\.exe$/i
