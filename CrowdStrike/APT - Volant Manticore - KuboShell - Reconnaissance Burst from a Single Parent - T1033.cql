@@ -8,12 +8,12 @@
 // ----------------------------------------------------------------------------
 #event_simpleName=ProcessRollup2 event_platform=Win
 | ImageFileName=/\\(quser|whoami|ipconfig|route|netstat|nslookup|net|net1)\.exe$/i
-| groupBy([aid, ComputerName, UserName, ParentBaseFileName, ParentProcessId],
-    function=[
-      count(ImageFileName, distinct=true, as=DistinctTools),
-      collect([ImageFileName, CommandLine]),
-      min(@timestamp, as=FirstSeen),
-      max(@timestamp, as=LastSeen)
-    ])
+| CommandLine=/(\bquser\b|\bwhoami\b|\bipconfig\b|route(\.exe)?\s+print|netstat(\.exe)?\s+-nat|_kerberos\._tcp|domain admins)/i
+| groupBy([aid, ParentProcessId], function=[
+    count(ImageFileName, distinct=true, as=DistinctTools),
+    collect([ComputerName, UserName, ParentBaseFileName, CommandLine]),
+    min(@timestamp, as=FirstSeen),
+    max(@timestamp, as=LastSeen)
+  ], limit=max)
 | test(DistinctTools >= 3)
 | sort(DistinctTools, order=desc)
